@@ -21,7 +21,7 @@ index.html + *.js        статический Telegram Mini App
 
 - `apps/api/` — единственный владелец PostgreSQL и регистрации;
 - `packages/contracts/` — общие схемы запросов и ответов;
-- `db/migrations/` — только PostgreSQL-миграции идентификационного контура;
+- `db/migrations/001_identity.sql` — схема БД и начальная миграция в одном файле;
 - `bot/` — Telegram-адаптер и существующие сценарии билетов;
 - корневые `index.html`, `config.js`, `economy.js`, `engagement.js` — текущий
   frontend без изменения визуальной механики;
@@ -30,6 +30,17 @@ index.html + *.js        статический Telegram Mini App
 Физическое дробление большого `index.html` на компоненты намеренно вынесено в
 отдельную задачу: одновременный перенос UI и хранилища слишком сильно повышает
 риск визуальных и Telegram-регрессий.
+
+### Схема БД
+
+Единственный источник структуры приложения —
+[`db/migrations/001_identity.sql`](db/migrations/001_identity.sql): в нём вместе
+описаны таблицы `users`, `participant_registrations`, `api_sessions`, их связи,
+ограничения и индексы. Отдельной ORM-схемы или дублирующего `schema.sql` нет.
+Служебную таблицу `schema_migrations` создаёт runner; он записывает контрольную
+сумму SQL и повторно не применяет уже выполненную миграцию. После первого
+развёртывания менять `001_identity.sql` нельзя — следующая правка БД должна
+стать новой версионированной миграцией.
 
 ### Запуск через Docker
 
@@ -106,7 +117,7 @@ Telegram `initData` в базу пользователя не создаёт.
 | `telegram-engagement-prompt.md` | ТЗ на баллы за активность в t.me/rizzoma26: подписки, реакции, бусты канала через Bot API, автотесты интеграции |
 | `apps/api/` | TypeScript API регистрации, сессии, PostgreSQL и health/readiness |
 | `packages/contracts/` | общие валидируемые контракты Mini App, API и бота |
-| `db/migrations/` | PostgreSQL-схема пользователей, регистраций и сессий |
+| `db/migrations/001_identity.sql` | единый SQL-файл схемы пользователей, регистраций, сессий и начальной миграции |
 | `bot/` | Telegram-адаптер: диплинки, реферальный граф, счета, вебхук оплаты и вызов registration API |
 | `tests/` | юнит-тесты экономики и баллов, интеграционные тесты приёма Telegram-апдейтов (`node --test`), e2e на Playwright |
 | `legacy/index.landing.html` | прошлая версия — лендинг со скроллом. Откат = вернуть этот файл на место `index.html` |
