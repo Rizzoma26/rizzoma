@@ -10,8 +10,9 @@
      6) /api/friends — вкладка «Свои»;
      7) /api/admin/* — управление бетой, только для ADMIN_TG_IDS.
 
-   ⚠ Хранилище — Map в памяти: перезапуск стирает всё. Для боевой версии
-     замени store на Postgres/Redis, остальное менять не придётся.
+   ⚠ Профиль и регистрация участника сохраняются через registration API в
+     PostgreSQL. Платежи, betaOpen и channel ledger пока остаются в памяти
+     этого процесса и требуют отдельной миграции.
    ⚠ Telegram НЕ отдаёт адресную книгу ни боту, ни Mini App. Граф строится
      только из переходов по реферальным ссылкам.
    ============================================================ */
@@ -30,6 +31,7 @@ const ENG  = require('../engagement.js');
 
 const TOKEN      = process.env.BOT_TOKEN;
 const APP_URL    = process.env.APP_URL;                       // https://…/index.html
+const REGISTRATION_API_BASE = String(process.env.REGISTRATION_API_BASE || '').replace(/\/+$/, '');
 const PORT       = Number(process.env.PORT || 8080);
 const ORIGIN     = process.env.CORS_ORIGIN || '*';
 const MAX_AGE    = 24 * 60 * 60;                              // initData живёт сутки
@@ -82,6 +84,7 @@ if(!TOKEN || !APP_URL){
 if(!ADMINS.length) console.warn('ADMIN_TG_IDS пуст: бета-админка не откроется ни для кого');
 if(!PROVIDER_TOKEN) console.warn('PROVIDER_TOKEN пуст: счета не выставляются, оплата недоступна');
 if(!CHANNEL_ID) console.warn('CHANNEL_ID пуст: баллы за активность в канале не начисляются');
+if(!REGISTRATION_API_BASE) console.warn('REGISTRATION_API_BASE пуст: PostgreSQL-регистрация отключена');
 
 /* ---------- хранилище ---------- */
 const users = new Map();   // tgId -> {id,name,username,photo,code,invitedBy,paid,revoked,ts}
@@ -106,6 +109,7 @@ function newCode(){
 const upsert = (tg, patch = {}) => {
   const id = String(tg.id);
   const cur = users.get(id) || {id, code:null, invitedBy:null, paid:false, revoked:false, ts:Date.now()};
+  if(patch.code && cur.code && patch.code !== cur.code) codes.delete(cur.code);
   const next = Object.assign(cur, {
     name: [tg.first_name, tg.last_name].filter(Boolean).join(' ') || cur.name || 'Узел',
     username: tg.username || cur.username || '',
@@ -117,6 +121,64 @@ const upsert = (tg, patch = {}) => {
   codes.set(next.code, id);
   return next;
 };
+
+function normalizedTelegramUser(tg){
+  return {
+    id: String(tg.id),
+    username: tg.username || null,
+    firstName: tg.first_name,
+    lastName: tg.last_name || null
+  };
+}
+
+async function registerParticipant(tg, referralCode){
+  if(!REGISTRATION_API_BASE) return null;
+  const body = {telegramUser: normalizedTelegramUser(tg)};
+  if(referralCode) body.referralCode = referralCode;
+  const canonical = JSON.stringify({
+    telegramUser: body.telegramUser,
+    referralCode: body.referralCode || null
+  });
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const signature = crypto.createHmac('sha256', TOKEN)
+    .update(`${timestamp}.${canonical}`)
+    .digest('hex');
+  const response = await fetch(`${REGISTRATION_API_BASE}/api/v1/registrations/bot`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Rizzoma-Bot-Timestamp': timestamp,
+      'X-Rizzoma-Bot-Signature': signature
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(5000)
+  });
+  if(!response.ok) throw new Error(`registration API returned ${response.status}`);
+  return response.json();
+}
+
+async function participantFor(tg, referralCode){
+  const registration = await registerParticipant(tg, referralCode);
+  const saved = registration && registration.registration;
+  const me = upsert(tg, saved ? {
+    code: saved.referralCode,
+    invitedBy: saved.referredByCode || null
+  } : {});
+  if(!registration && referralCode && !me.invitedBy && me.code !== referralCode){
+    upsert(tg, {invitedBy: referralCode});
+  }
+  return {me, registration};
+}
+
+async function participantForRequest(req, res, tg, referralCode){
+  try {
+    return await participantFor(tg, referralCode);
+  } catch(error) {
+    console.error('participant registration failed:', error.message);
+    res.status(503).json({error:'registration unavailable'});
+    return null;
+  }
+}
 
 /* Узлы ветви = те, кто пришёл по ссылке И оплатил. Считается из графа,
    отдельного счётчика нет — поэтому накрутить его нечем. */
@@ -158,25 +220,28 @@ bot.command('start', async ctx => {
   const payload = (ctx.match || '').trim();
   const tg = ctx.from;
 
+  const referral = /^[A-Z0-9]{4,8}$/i.test(payload) ? payload.toUpperCase() : '';
+  let participant;
+  try {
+    participant = await participantFor(tg, referral);
+  } catch(error) {
+    console.error('participant registration failed:', error.message);
+    await ctx.reply('Регистрация временно недоступна. Попробуй ещё раз через минуту.');
+    return;
+  }
+  const {me, registration} = participant;
+
   if(payload.startsWith('link_')){
     // привязка аккаунта к уже активированному узлу
     const code = payload.slice(5).toUpperCase().slice(0, 8);
-    const u = upsert(tg);
-    if(code && code !== u.code){ codes.delete(u.code); upsert(tg, {code}); }
+    // При подключённой PostgreSQL код выдаёт registration API. Старую
+    // привязку к клиентскому коду сохраняем только в автономном legacy-режиме.
+    if(!registration && code && code !== me.code){ codes.delete(me.code); upsert(tg, {code}); }
     await ctx.reply(
-      `Узел ${code || u.code} привязан.\nВо вкладке «Свои» видно, кто пришёл по твоей ссылке.`,
+      `Узел ${registration ? me.code : (code || me.code)} привязан.\nВо вкладке «Свои» видно, кто пришёл по твоей ссылке.`,
       { reply_markup: openKeyboard() }
     );
     return;
-  }
-
-  if(/^[A-Z0-9]{4,8}$/i.test(payload)){
-    // переход по ссылке t.me/<бот>?startapp=КОД — фиксируем атрибуцию
-    const me = upsert(tg);
-    const ref = payload.toUpperCase();
-    if(!me.invitedBy && me.code !== ref) upsert(tg, { invitedBy: ref });
-  } else {
-    upsert(tg);
   }
 
   await ctx.reply(
@@ -356,19 +421,21 @@ function amountFor(u, clsId, sizeId){
 }
 
 /* Mini App сообщает, по чьей ссылке открылась (startapp до бота не долетает). */
-app.post('/api/visit', (req, res) => {
+app.post('/api/visit', async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
-  const me = upsert(tg);
   const ref = String(req.body.ref || '').toUpperCase().slice(0, 8);
-  if(/^[A-Z0-9]{4,8}$/.test(ref) && !me.invitedBy && me.code !== ref) upsert(tg, { invitedBy: ref });
-  res.json({ ok: true });
+  const participant = await participantForRequest(req, res, tg, /^[A-Z0-9]{4,8}$/.test(ref) ? ref : '');
+  if(!participant) return;
+  res.json({ ok: true, registration: participant.registration && participant.registration.registration });
 });
 
 /* Состояние узла. Для приложения это источник правды: локальные данные —
    кэш на случай офлайна. */
-app.post('/api/state', (req, res) => {
+app.post('/api/state', async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
-  const u = upsert(tg);
+  const participant = await participantForRequest(req, res, tg, '');
+  if(!participant) return;
+  const u = participant.me;
   res.json({
     code: u.code, paid: !!u.paid, revoked: !!u.revoked,
     refs: refsOf(u), invitedBy: u.invitedBy || null,
@@ -396,7 +463,10 @@ app.post('/api/engagement', (req, res) => {
    скидку и валюту определяет сервер. */
 app.post('/api/invoice', async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
-  const u = upsert(tg);
+  const ref = String(req.body.ref || '').toUpperCase().slice(0, 8);
+  const participant = await participantForRequest(req, res, tg, /^[A-Z0-9]{4,8}$/.test(ref) ? ref : '');
+  if(!participant) return;
+  const u = participant.me;
   if(u.revoked) return res.status(403).json({ error: 'доступ к бете отозван' });
   if(!PROVIDER_TOKEN) return res.status(503).json({ error: 'платежи не подключены' });
 
@@ -405,9 +475,6 @@ app.post('/api/invoice', async (req, res) => {
   const amount = amountFor(u, cls, size);
   if(amount === null) return res.status(400).json({ error: 'цена не объявлена' });
   if(amount <= 0)     return res.status(400).json({ error: 'к оплате 0 — билет уже бесплатный' });
-
-  const ref = String(req.body.ref || '').toUpperCase().slice(0, 8);
-  if(/^[A-Z0-9]{4,8}$/.test(ref) && !u.invitedBy && u.code !== ref) upsert(tg, { invitedBy: ref });
 
   const c = ECON.classOf(cls), s = ECON.sizeOf(size);
   try {
@@ -432,16 +499,20 @@ app.post('/api/invoice', async (req, res) => {
 /* Оставлено для совместимости с прежним контрактом: раньше сюда стучал
    клиент после мок-оплаты. Теперь оплату подтверждает только вебхук
    successful_payment, поэтому здесь можно лишь привязать код узла. */
-app.post('/api/purchase', (req, res) => {
+app.post('/api/purchase', async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
-  const u = upsert(tg);
+  const participant = await participantForRequest(req, res, tg, '');
+  if(!participant) return;
+  const u = participant.me;
   res.json({ ok: true, paid: !!u.paid, note: 'оплата засчитывается вебхуком successful_payment' });
 });
 
 /* Вкладка «Свои»: ветвь + пригласивший + соседи по ветви. */
-app.post('/api/friends', (req, res) => {
+app.post('/api/friends', async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
-  const me = upsert(tg);
+  const participant = await participantForRequest(req, res, tg, '');
+  if(!participant) return;
+  const me = participant.me;
   const all = [...users.values()];
   const out = new Map();
 
@@ -517,11 +588,19 @@ const isEntry = process.argv[1] &&
   pathToFileURL(process.argv[1]).href === import.meta.url;
 
 if(isEntry){
+  if(!REGISTRATION_API_BASE){
+    console.error('Нужен REGISTRATION_API_BASE: без PostgreSQL API бот не запускается');
+    process.exit(1);
+  }
   app.listen(PORT, () => console.log(`API на :${PORT}`));
   /* Если токен неверный, падать целиком незачем: API уже поднят и ошибка
      должна быть видна в логах хостинга, а не в тишине. */
   bot.start({ allowed_updates: ALLOWED_UPDATES })
-     .catch(err => console.error('бот не запустился (проверь BOT_TOKEN):', err.message));
+     .catch(err => {
+       console.error('бот не запустился (проверь BOT_TOKEN):', err.message);
+       process.exitCode = 1;
+       process.exit(1);
+     });
 }
 
 export { bot, app, ALLOWED_UPDATES, engagementOf, users, upsert };

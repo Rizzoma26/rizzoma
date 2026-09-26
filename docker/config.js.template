@@ -1,0 +1,20 @@
+var RZ_ADMIN_LINK = /(^|[?&])mode=admin(&|$)/.test(location.search);
+window.RIZZOMA_CONFIG = {
+  bot: '${RIZZOMA_BOT_USERNAME}',
+  app: '${RIZZOMA_APP_SHORT_NAME}',
+  apiBase: window.location.origin,
+  registrationApiBase: window.location.origin,
+  crewDemo: false,
+  prices: {
+    std: Number('${PRICE_STD}') || null,
+    vip: Number('${PRICE_VIP}') || null
+  },
+  event: {
+    title: 'RIZZOMA',
+    line: 'Следующий ивент · дата не объявлена · Санкт-Петербург · 18+'
+  },
+  betaOpen: null,
+  panel: RZ_ADMIN_LINK,
+  qaButton: RZ_ADMIN_LINK,
+  admins: []
+};
