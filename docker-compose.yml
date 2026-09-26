@@ -102,7 +102,7 @@ services:
       PRICE_STD: "${PRICE_STD:-null}"
       PRICE_VIP: "${PRICE_VIP:-null}"
     ports:
-      - "${WEB_PORT:-8080}:8080"
+      - "127.0.0.1:${WEB_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz"]
       interval: 10s
