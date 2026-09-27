@@ -42,7 +42,7 @@ FROM node:22.22.2-alpine AS bot
 WORKDIR /app
 ENV NODE_ENV=production PORT=8080
 COPY --from=bot-dependencies --chown=node:node /app/bot/node_modules bot/node_modules
-COPY --chown=node:node bot/package.json bot/bot.js bot/
+COPY --chown=node:node bot/package.json bot/bot.js bot/storage.js bot/
 COPY --chown=node:node economy.js engagement.js ./
 USER node
 EXPOSE 8080

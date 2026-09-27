@@ -10,9 +10,9 @@
      6) /api/friends — вкладка «Свои»;
      7) /api/admin/* — управление бетой, только для ADMIN_TG_IDS.
 
-   ⚠ Профиль и регистрация участника сохраняются через registration API в
-     PostgreSQL. Платежи, betaOpen и channel ledger пока остаются в памяти
-     этого процесса и требуют отдельной миграции.
+   Профиль и регистрация участника сохраняются через registration API.
+   Счета, оплаты, баллы, betaOpen и отзыв доступа хранятся в PostgreSQL.
+   Map ниже используется только в автономном режиме существующих тестов.
    ⚠ Telegram НЕ отдаёт адресную книгу ни боту, ни Mini App. Граф строится
      только из переходов по реферальным ссылкам.
    ============================================================ */
@@ -22,6 +22,7 @@ import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import express from 'express';
 import { Bot, InlineKeyboard } from 'grammy';
+import { PostgresBotStore } from './storage.js';
 
 /* экономику берём из того же файла, что и фронт: цена считается по одним
    правилам на клиенте и на сервере, но решает всегда сервер */
@@ -32,6 +33,7 @@ const ENG  = require('../engagement.js');
 const TOKEN      = process.env.BOT_TOKEN;
 const APP_URL    = process.env.APP_URL;                       // https://…/index.html
 const REGISTRATION_API_BASE = String(process.env.REGISTRATION_API_BASE || '').replace(/\/+$/, '');
+const STORE      = process.env.DATABASE_URL ? new PostgresBotStore(process.env.DATABASE_URL) : null;
 const PORT       = Number(process.env.PORT || 8080);
 const ORIGIN     = process.env.CORS_ORIGIN || '*';
 const MAX_AGE    = 24 * 60 * 60;                              // initData живёт сутки
@@ -86,7 +88,7 @@ if(!PROVIDER_TOKEN) console.warn('PROVIDER_TOKEN пуст: счета не вы�
 if(!CHANNEL_ID) console.warn('CHANNEL_ID пуст: баллы за активность в канале не начисляются');
 if(!REGISTRATION_API_BASE) console.warn('REGISTRATION_API_BASE пуст: PostgreSQL-регистрация отключена');
 
-/* ---------- хранилище ---------- */
+/* ---------- in-memory контур существующих тестов; production требует STORE ---------- */
 const users = new Map();   // tgId -> {id,name,username,photo,code,invitedBy,paid,revoked,ts}
 const codes = new Map();   // code -> tgId
 const payments = [];       // журнал платежей теста (последние 200)
@@ -159,6 +161,12 @@ async function registerParticipant(tg, referralCode){
 
 async function participantFor(tg, referralCode){
   const registration = await registerParticipant(tg, referralCode);
+  if(STORE){
+    if(!registration) throw new Error('Registration API is required');
+    const me = await STORE.snapshot(tg.id);
+    if(!me || me.status !== 'active') throw new Error('Registered participant is unavailable');
+    return {me, registration};
+  }
   const saved = registration && registration.registration;
   const me = upsert(tg, saved ? {
     code: saved.referralCode,
@@ -182,7 +190,8 @@ async function participantForRequest(req, res, tg, referralCode){
 
 /* Узлы ветви = те, кто пришёл по ссылке И оплатил. Считается из графа,
    отдельного счётчика нет — поэтому накрутить его нечем. */
-const refsOf = u => [...users.values()].filter(x => x.invitedBy === u.code && x.paid).length;
+const refsOf = u => u && Number.isInteger(u.refs)
+  ? u.refs : [...users.values()].filter(x => x.invitedBy === u.code && x.paid).length;
 
 /* ---------- валидация initData (HMAC «WebAppData») ---------- */
 function validateInitData(initData){
@@ -257,6 +266,12 @@ bot.on('pre_checkout_query', async ctx => {
   const q = ctx.preCheckoutQuery;
   try {
     const p = JSON.parse(q.invoice_payload || '{}');
+    if(STORE){
+      const intent = await STORE.invoiceForCheckout(p.invoiceId, q.from.id);
+      const ok = !!intent && Number(intent.amount_minor) === q.total_amount && intent.currency === q.currency;
+      await ctx.answerPreCheckoutQuery(ok, ok ? undefined : 'Счёт устарел, откройте приложение заново');
+      return;
+    }
     const u = users.get(String(q.from.id));
     const want = amountFor(u, p.cls, p.size);
     const ok = !!u && !u.revoked && want !== null && want === q.total_amount;
@@ -272,26 +287,35 @@ bot.on('message:successful_payment', async ctx => {
   const sp = ctx.message.successful_payment;
   let payload = {};
   try { payload = JSON.parse(sp.invoice_payload || '{}'); } catch(e){}
-  const u = upsert(ctx.from, { paid: true });
-  if(!u.invitedBy && payload.ref && payload.ref !== u.code) upsert(ctx.from, { invitedBy: payload.ref });
+  let u;
+  let ticket = payload;
+  if(STORE){
+    const receipt = await STORE.recordPayment(ctx.from.id, payload.invoiceId, sp);
+    if(!receipt.created) return; // Telegram доставил уже учтённую оплату ещё раз.
+    u = receipt.user;
+    ticket = receipt;
+  } else {
+    u = upsert(ctx.from, { paid: true });
+    if(!u.invitedBy && payload.ref && payload.ref !== u.code) upsert(ctx.from, { invitedBy: payload.ref });
+    payments.unshift({
+      ts: Date.now(), id: u.id, name: u.name, username: u.username,
+      amount: sp.total_amount, currency: sp.currency,
+      cls: payload.cls || '—', size: payload.size || '—',
+      status: 'paid', charge: sp.provider_payment_charge_id || ''
+    });
+    if(payments.length > 200) payments.pop();
+  }
 
-  payments.unshift({
-    ts: Date.now(), id: u.id, name: u.name, username: u.username,
-    amount: sp.total_amount, currency: sp.currency,
-    cls: payload.cls || '—', size: payload.size || '—',
-    status: 'paid', charge: sp.provider_payment_charge_id || ''
-  });
-  if(payments.length > 200) payments.pop();
-
-  const size = ECON.sizeOf(payload.size) || ECON.TICKET_SIZE[0];
-  const cls  = ECON.classOf(payload.cls) || ECON.TICKET_CLASS[0];
+  const size = ECON.sizeOf(ticket.size) || ECON.TICKET_SIZE[0];
+  const cls  = ECON.classOf(ticket.cls) || ECON.TICKET_CLASS[0];
   await ctx.reply(
     `Оплачено. ${size.name} · ${cls.name}.\n` +
     `Входов: ${size.qty}. Узел: ${u.code}.\n` +
     `Билет показать на входе вместе с паспортом (18+).`,
     { reply_markup: openKeyboard() }
   );
-  const inviter = u.invitedBy && users.get(codes.get(u.invitedBy));
+  const inviter = STORE ? await STORE.inviterFor(ctx.from.id)
+    : u.invitedBy && users.get(codes.get(u.invitedBy));
   if(inviter){
     try {
       await bot.api.sendMessage(inviter.id,
@@ -318,18 +342,28 @@ function payee(user){
   const id = String(user.id || '');
   return /^\d+$/.test(id) ? id : null;
 }
-function engAward(user, rule, subject){
+async function engAward(user, rule, subject){
   const id = payee(user);
   if(!id) return null;
+  if(STORE){
+    const result = await STORE.engagementChange(id, rule, subject, 'award');
+    if(result.ok) console.log(`+${result.points} ${rule}`);
+    return result;
+  }
   const res = ENG.award(engagement.get(id) || ENG.emptyLedger(), {rule, userId: id, subject});
   if(!res.ok) return null;
   engagement.set(id, res.ledger);
   console.log(`+${res.event.points} ${rule} → ${id} (итого ${res.ledger.points})`);
   return res;
 }
-function engRevoke(user, rule, subject){
+async function engRevoke(user, rule, subject){
   const id = payee(user);
   if(!id) return null;
+  if(STORE){
+    const result = await STORE.engagementChange(id, rule, subject, 'revoke');
+    if(result.ok) console.log(`−${result.points} ${rule}`);
+    return result;
+  }
   const res = ENG.revoke(engagement.get(id) || ENG.emptyLedger(), {rule, userId: id, subject});
   if(!res.ok) return null;
   engagement.set(id, res.ledger);
@@ -340,50 +374,56 @@ const engagementOf = id => engagement.get(String(id)) || ENG.emptyLedger();
 
 /* подписка на канал: статус сменился на «в чате» из «не в чате».
    Начисляем тому, чей статус изменился, а не тому, кто изменил. */
-bot.on('chat_member', ctx => {
+bot.on('chat_member', async ctx => {
   const upd = ctx.chatMember;
   if(!isChannel(upd.chat.id)) return;
   const was = upd.old_chat_member.status, now = upd.new_chat_member.status;
   const out = s => s === 'left' || s === 'kicked';
   const inside = s => s === 'member' || s === 'administrator' || s === 'creator';
-  if(out(was) && inside(now)) engAward(upd.new_chat_member.user, 'join');
+  if(out(was) && inside(now)) await engAward(upd.new_chat_member.user, 'join');
 });
 
 /* реакция на пост. Анонимная реакция от лица канала приходит без user —
    привязать её не к кому, просто пропускаем. */
-bot.on('message_reaction', ctx => {
+bot.on('message_reaction', async ctx => {
   const r = ctx.messageReaction;
   if(!isChannel(r.chat.id)) return;
   if(!r.new_reaction || !r.new_reaction.length) return;     // реакцию сняли — не платим и не отнимаем
-  engAward(r.user, 'reaction', r.message_id);
+  await engAward(r.user, 'reaction', r.message_id);
 });
 
-bot.on('chat_boost', ctx => {
+bot.on('chat_boost', async ctx => {
   const b = ctx.chatBoost;
   if(!isChannel(b.chat.id)) return;
-  engAward(b.boost.source && b.boost.source.user, 'boost', b.boost.boost_id);
+  await engAward(b.boost.source && b.boost.source.user, 'boost', b.boost.boost_id);
 });
-bot.on('removed_chat_boost', ctx => {
+bot.on('removed_chat_boost', async ctx => {
   const b = ctx.removedChatBoost;
   if(!isChannel(b.chat.id)) return;
-  engRevoke(b.source && b.source.user, 'boost', b.boost_id);
+  await engRevoke(b.source && b.source.user, 'boost', b.boost_id);
 });
 
 /* комментарий в привязанной группе обсуждений. Пока DISCUSSION_ID не задан,
    этот обработчик не срабатывает ни разу. Автопересылка поста из канала
    приходит сюда же — она не от человека, её отсекает sender_chat. */
-bot.on('message', ctx => {
+bot.on('message', async ctx => {
   const m = ctx.message;
   if(!isDiscussion(m.chat.id)) return;
   if(m.sender_chat || m.is_automatic_forward) return;
-  engAward(ctx.from, 'comment', m.message_id);
+  await engAward(ctx.from, 'comment', m.message_id);
 });
 
-bot.catch(err => console.error('bot error:', err));
+bot.catch(err => {
+  console.error('bot update failed:', err instanceof Error ? err.name : 'UnknownError');
+  // In production a failed payment/engagement write must not be treated as a
+  // successful update and followed by more polling on a broken database.
+  if(STORE) process.exit(1);
+});
 
 /* ============================ API ============================ */
 const app = express();
 app.use(express.json({ limit: '64kb' }));
+const asyncRoute = handler => (req, res, next) => Promise.resolve(handler(req, res)).catch(next);
 app.use((req, res, next) => {
   res.set('Access-Control-Allow-Origin', ORIGIN);
   res.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -421,17 +461,17 @@ function amountFor(u, clsId, sizeId){
 }
 
 /* Mini App сообщает, по чьей ссылке открылась (startapp до бота не долетает). */
-app.post('/api/visit', async (req, res) => {
+app.post('/api/visit', asyncRoute(async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
   const ref = String(req.body.ref || '').toUpperCase().slice(0, 8);
   const participant = await participantForRequest(req, res, tg, /^[A-Z0-9]{4,8}$/.test(ref) ? ref : '');
   if(!participant) return;
   res.json({ ok: true, registration: participant.registration && participant.registration.registration });
-});
+}));
 
 /* Состояние узла. Для приложения это источник правды: локальные данные —
    кэш на случай офлайна. */
-app.post('/api/state', async (req, res) => {
+app.post('/api/state', asyncRoute(async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
   const participant = await participantForRequest(req, res, tg, '');
   if(!participant) return;
@@ -439,29 +479,30 @@ app.post('/api/state', async (req, res) => {
   res.json({
     code: u.code, paid: !!u.paid, revoked: !!u.revoked,
     refs: refsOf(u), invitedBy: u.invitedBy || null,
-    betaOpen, prices: PRICES, currency: CURRENCY,
+    betaOpen: STORE ? await STORE.beta(betaOpen) : betaOpen,
+    prices: PRICES, currency: CURRENCY,
     payments: PROVIDER_TOKEN ? 'on' : 'off'
   });
-});
+}));
 
 /* Баллы за активность в канале. Отдаём только свои: чужой ledger по этому
    эндпоинту не достать, id берётся из подписанной initData, а не из тела.
    tracking:'off' — бот не знает канала (CHANNEL_ID пуст), клиенту нужно
    сказать это честно, а не показывать ноль как достижение. */
-app.post('/api/engagement', (req, res) => {
+app.post('/api/engagement', asyncRoute(async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
-  const led = engagementOf(tg.id);
+  const led = STORE ? await STORE.engagement(tg.id) : engagementOf(tg.id);
   res.json({
     points: led.points,
-    events: led.events.slice(-20).reverse(),
+    events: STORE ? led.events : led.events.slice(-20).reverse(),
     tracking: CHANNEL_ID ? 'on' : 'off',
     discussion: DISCUSSION_ID ? 'on' : 'off'
   });
-});
+}));
 
 /* Счёт на оплату. Клиент присылает только состав и класс — сумму,
    скидку и валюту определяет сервер. */
-app.post('/api/invoice', async (req, res) => {
+app.post('/api/invoice', asyncRoute(async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
   const ref = String(req.body.ref || '').toUpperCase().slice(0, 8);
   const participant = await participantForRequest(req, res, tg, /^[A-Z0-9]{4,8}$/.test(ref) ? ref : '');
@@ -477,42 +518,58 @@ app.post('/api/invoice', async (req, res) => {
   if(amount <= 0)     return res.status(400).json({ error: 'к оплате 0 — билет уже бесплатный' });
 
   const c = ECON.classOf(cls), s = ECON.sizeOf(size);
+  let invoiceId = null;
+  if(STORE){
+    try {
+      invoiceId = await STORE.createInvoice(u.id, {amount, currency:CURRENCY, cls, size});
+    } catch(error) {
+      console.error('invoice persistence failed:', error instanceof Error ? error.name : 'UnknownError');
+      return res.status(503).json({error:'хранилище счёта недоступно'});
+    }
+  }
   try {
     const link = await bot.api.createInvoiceLink(
       `${s.name} · ${c.name}`,
       `RIZZOMA · входов: ${s.qty} · узел ${u.code}`,
-      JSON.stringify({cls, size, ref: u.invitedBy || ref || '', code: u.code}),
+      STORE ? JSON.stringify({invoiceId})
+        : JSON.stringify({cls, size, ref: u.invitedBy || ref || '', code: u.code}),
       PROVIDER_TOKEN,
       CURRENCY,
       [{ label: `${s.name} · ${c.name}`, amount }]
     );
-    payments.unshift({ ts: Date.now(), id: u.id, name: u.name, username: u.username,
-                       amount, currency: CURRENCY, cls, size, status: 'invoice' });
-    if(payments.length > 200) payments.pop();
+    if(!STORE){
+      payments.unshift({ ts: Date.now(), id: u.id, name: u.name, username: u.username,
+                         amount, currency: CURRENCY, cls, size, status: 'invoice' });
+      if(payments.length > 200) payments.pop();
+    }
     res.json({ link, amount, currency: CURRENCY });
   } catch(e){
+    if(STORE && invoiceId) await STORE.failInvoice(invoiceId).catch(() => undefined);
     console.error('invoice error:', e.message);
     res.status(502).json({ error: 'провайдер не принял счёт' });
   }
-});
+}));
 
 /* Оставлено для совместимости с прежним контрактом: раньше сюда стучал
-   клиент после мок-оплаты. Теперь оплату подтверждает только вебхук
+   клиент после мок-оплаты. Теперь оплату подтверждает только Telegram update
    successful_payment, поэтому здесь можно лишь привязать код узла. */
-app.post('/api/purchase', async (req, res) => {
+app.post('/api/purchase', asyncRoute(async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
   const participant = await participantForRequest(req, res, tg, '');
   if(!participant) return;
   const u = participant.me;
-  res.json({ ok: true, paid: !!u.paid, note: 'оплата засчитывается вебхуком successful_payment' });
-});
+  res.json({ ok: true, paid: !!u.paid, note: 'оплата засчитывается только Telegram successful_payment' });
+}));
 
 /* Вкладка «Свои»: ветвь + пригласивший + соседи по ветви. */
-app.post('/api/friends', async (req, res) => {
+app.post('/api/friends', asyncRoute(async (req, res) => {
   const tg = auth(req, res); if(!tg) return;
   const participant = await participantForRequest(req, res, tg, '');
   if(!participant) return;
   const me = participant.me;
+  if(STORE){
+    return res.json({linked:!!me.code, friends:await STORE.friends(me.id)});
+  }
   const all = [...users.values()];
   const out = new Map();
 
@@ -531,13 +588,14 @@ app.post('/api/friends', async (req, res) => {
   }
 
   res.json({ linked: !!me.code, friends: [...out.values()] });
-});
+}));
 
 /* ======================= АДМИНКА БЕТЫ ======================= */
 
 /* Воронка тестеров + журнал платежей + текущий туман. */
-app.post('/api/admin/overview', (req, res) => {
+app.post('/api/admin/overview', asyncRoute(async (req, res) => {
   const tg = adminAuth(req, res); if(!tg) return;
+  if(STORE) return res.json({ok:true, ...await STORE.overview(betaOpen)});
   const testers = [...users.values()]
     .sort((a, b) => b.ts - a.ts)
     .map(u => ({
@@ -553,33 +611,52 @@ app.post('/api/admin/overview', (req, res) => {
       revoked: testers.filter(t => t.revoked).length
     }
   });
-});
+}));
 
 /* Туман на лету: какие узлы видит вся бета. Без деплоя. */
-app.post('/api/admin/beta', (req, res) => {
+app.post('/api/admin/beta', asyncRoute(async (req, res) => {
   const tg = adminAuth(req, res); if(!tg) return;
   const list = Array.isArray(req.body.betaOpen) ? req.body.betaOpen : null;
   if(!list) return res.status(400).json({ error: 'betaOpen: нужен массив индексов' });
   const clean = [...new Set(list.map(Number).filter(n => Number.isInteger(n) && n >= 0 && n < ECON.TIERS.length))];
-  betaOpen = clean.sort((a, b) => a - b);
+  const nextOpen = clean.sort((a, b) => a - b);
+  betaOpen = STORE ? await STORE.setBeta(nextOpen, tg.id) : nextOpen;
   res.json({ ok: true, betaOpen });
-});
+}));
 
 /* Отзыв доступа тестера: счёт ему больше не выставляется. */
-app.post('/api/admin/tester', (req, res) => {
+app.post('/api/admin/tester', asyncRoute(async (req, res) => {
   const tg = adminAuth(req, res); if(!tg) return;
   const id = String(req.body.id || '');
+  if(!/^\d+$/.test(id) || !['revoke', 'restore'].includes(req.body.action))
+    return res.status(400).json({error:'неверный пользователь или действие'});
+  if(STORE){
+    const revoked = req.body.action === 'revoke';
+    const found = await STORE.setRevoked(id, revoked);
+    if(!found) return res.status(404).json({error:'нет такого тестера'});
+    return res.json({ok:true, id, revoked});
+  }
   const u = users.get(id);
   if(!u) return res.status(404).json({ error: 'нет такого тестера' });
   u.revoked = req.body.action === 'revoke';
   res.json({ ok: true, id, revoked: u.revoked });
-});
-
-app.get('/health', (_, res) => res.json({
-  ok: true, users: users.size, payments: payments.length,
-  provider: PROVIDER_TOKEN ? 'on' : 'off', admins: ADMINS.length,
-  channel: CHANNEL_ID ? 'on' : 'off', engaged: engagement.size
 }));
+
+app.get('/health', asyncRoute(async (_, res) => {
+  const counts = STORE ? await STORE.health() : {
+    users: users.size, payments: payments.length, engaged: engagement.size
+  };
+  res.json({
+    ok: true, ...counts,
+    provider: PROVIDER_TOKEN ? 'on' : 'off', admins: ADMINS.length,
+    channel: CHANNEL_ID ? 'on' : 'off'
+  });
+}));
+
+app.use((error, _req, res, _next) => {
+  console.error('bot request failed:', error instanceof Error ? error.name : 'UnknownError');
+  if(!res.headersSent) res.status(503).json({error:'service unavailable'});
+});
 
 /* Поднимаем сеть только когда файл запущен напрямую. Автотесты импортируют
    этот модуль, чтобы скормить боту синтетические апдейты — им ни порт,
@@ -588,13 +665,14 @@ const isEntry = process.argv[1] &&
   pathToFileURL(process.argv[1]).href === import.meta.url;
 
 if(isEntry){
-  if(!REGISTRATION_API_BASE){
-    console.error('Нужен REGISTRATION_API_BASE: без PostgreSQL API бот не запускается');
+  if(!REGISTRATION_API_BASE || !STORE){
+    console.error('Нужны REGISTRATION_API_BASE и DATABASE_URL: без PostgreSQL бот не запускается');
     process.exit(1);
   }
+  await STORE.ready();
+  await STORE.beta(betaOpen);
   app.listen(PORT, () => console.log(`API на :${PORT}`));
-  /* Если токен неверный, падать целиком незачем: API уже поднят и ошибка
-     должна быть видна в логах хостинга, а не в тишине. */
+  /* Ошибка long polling останавливает процесс: оркестратор перезапустит его. */
   bot.start({ allowed_updates: ALLOWED_UPDATES })
      .catch(err => {
        console.error('бот не запустился (проверь BOT_TOKEN):', err.message);

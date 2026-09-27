@@ -63,6 +63,7 @@ services:
         condition: service_healthy
     environment:
       BOT_TOKEN: "${BOT_TOKEN:?Set BOT_TOKEN in .env}"
+      DATABASE_URL: "${DATABASE_URL:?Set DATABASE_URL in .env}"
       APP_URL: "${APP_URL:?Set APP_URL in .env}"
       REGISTRATION_API_BASE: http://api:8081
       PORT: "8080"
