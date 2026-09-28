@@ -37,7 +37,6 @@ export const UserSchema = z.object({
 });
 
 export const AuthResponseSchema = z.object({
-  accessToken: z.string().min(32),
   expiresAt: isoDateTime,
   user: UserSchema,
   registration: RegistrationSchema

@@ -2,26 +2,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import type { PoolClient, QueryResultRow } from 'pg';
 import type { DatabasePool } from '../db/pool.js';
 import type { TelegramUser } from './telegram-init-data.js';
-
-export type RegistrationSource = 'mini_app' | 'bot';
-
-export interface UserRecord {
-  id: string;
-  telegramUserId: string;
-  username: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  status: 'active' | 'blocked' | 'deleted';
-}
-
-export interface RegistrationRecord {
-  user: UserRecord;
-  created: boolean;
-  source: RegistrationSource;
-  referralCode: string;
-  referredByCode: string | null;
-  registeredAt: string;
-}
+import type { RegistrationRecord, RegistrationSource, UserRecord } from './auth.models.js';
 
 interface UserRow extends QueryResultRow {
   id: string;
@@ -113,8 +94,8 @@ export class PostgresAuthRepository {
         await client.query(
           `UPDATE participant_registrations SET
              referred_by_user_id = COALESCE(referred_by_user_id, $1),
-             mini_app_registered_at = CASE WHEN $2 = 'mini_app' THEN COALESCE(mini_app_registered_at, now()) ELSE mini_app_registered_at END,
-             bot_registered_at = CASE WHEN $2 = 'bot' THEN COALESCE(bot_registered_at, now()) ELSE bot_registered_at END,
+             mini_app_registered_at = CASE WHEN $2::text = 'mini_app' THEN COALESCE(mini_app_registered_at, now()) ELSE mini_app_registered_at END,
+             bot_registered_at = CASE WHEN $2::text = 'bot' THEN COALESCE(bot_registered_at, now()) ELSE bot_registered_at END,
              updated_at = now()
            WHERE user_id = $3`,
           [referrerId, source, row.id]
@@ -143,8 +124,8 @@ export class PostgresAuthRepository {
              (user_id, referral_code, referred_by_user_id, first_source,
               mini_app_registered_at, bot_registered_at)
            VALUES ($1, $2, $3, $4,
-                   CASE WHEN $4 = 'mini_app' THEN now() END,
-                   CASE WHEN $4 = 'bot' THEN now() END)
+                   CASE WHEN $4::varchar = 'mini_app' THEN now() END,
+                   CASE WHEN $4::varchar = 'bot' THEN now() END)
            ON CONFLICT (referral_code) DO NOTHING
            RETURNING referral_code, created_at`,
           [row.id, referralCode, referrerId, source]

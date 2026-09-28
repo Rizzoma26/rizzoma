@@ -21,6 +21,9 @@ export function validateTelegramInitData(
   options: { botToken: string; maxAgeSeconds: number; now?: Date; maxFutureSkewSeconds?: number }
 ): TelegramUser {
   const params = new URLSearchParams(initData);
+  if (new Set(params.keys()).size !== [...params.keys()].length) {
+    throw new AppError(401, 'INVALID_TELEGRAM_AUTH', 'Duplicate authentication fields');
+  }
   const hash = params.get('hash');
   if (!hash || !/^[0-9a-f]{64}$/i.test(hash)) {
     throw new AppError(401, 'INVALID_TELEGRAM_AUTH', 'Telegram authentication is invalid');

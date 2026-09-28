@@ -1,0 +1,554 @@
+[
+  {
+    "name": "defuddle",
+    "description": "Plan and, with explicit network consent, use an optional external Defuddle cleaner to extract article-like HTTPS pages as Markdown. Use for defuddle, clean this URL, strip page clutter, readable Markdown from a web page, or preparing a web source for later wiki ingestion.",
+    "path": "/Users/gruber/.agents/skills/defuddle/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/defuddle/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "autoresearch",
+    "description": "Run a bounded, source-grounded research loop, draft a cited dossier, and optionally propose a separately reviewed canonical vault merge. Use when the user wants autonomous or deep research that may access the public web. Triggers: /autoresearch, autoresearch, research this topic, deep dive into, investigate, find everything about, research and file, go research, build a wiki on.",
+    "path": "/Users/gruber/.agents/skills/autoresearch/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/autoresearch/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "think",
+    "description": "Apply the Fable-derived 10-stage OBSERVE, OBSERVE, LISTEN, THINK, CONNECT, CONNECT, FEEL, ACCEPT, CREATE, GROW loop to consequential or ambiguous reasoning and decisions. Use for think this through, deep think, architecture review, postmortem, tradeoff analysis, or challenges to assumptions. This is a reasoning review, not a deterministic vault health check or repair workflow.",
+    "path": "/Users/gruber/.agents/skills/think/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/think/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "knowledge-update",
+    "description": "Evaluate whether completed work produced durable engineering knowledge and safely propose one evidence-backed vault update.",
+    "path": "/Users/gruber/.agents/skills/knowledge-update/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/.agents/skills/knowledge-update/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "wiki-ingest",
+    "description": "Ingest supplied source material into an Obsidian vault with provenance and claim tracking: pasted text, files staged in the selected vault's inbox or .raw archive, or explicitly approved URLs. Use for a single source or bounded batch, not for saving an assistant answer. Triggers: ingest, ingest this file, ingest this URL, process this source, read and file this source, batch ingest, ingest these sources.",
+    "path": "/Users/gruber/.agents/skills/wiki-ingest/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/wiki-ingest/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "wiki-mode",
+    "description": "Read or configure the vault filing methodology and suggest destinations for planned knowledge creation under Generic, LYT, PARA, or Zettelkasten. Use for wiki mode, methodology mode, what is my vault mode, set vault mode, switch to PARA, use LYT, Zettelkasten setup, change mode, configure mode, or methodology routing. This skill does not save content or migrate notes.",
+    "path": "/Users/gruber/.agents/skills/wiki-mode/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/wiki-mode/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "obsidian-markdown",
+    "description": "Explain, draft, or validate Obsidian Flavored Markdown syntax: properties, wikilinks, embeds, callouts, tags, comments, highlights, block references, math, and Mermaid. Use when the user explicitly requests Obsidian note formatting or syntax help, not for general Markdown or broad vault operations.",
+    "path": "/Users/gruber/.agents/skills/obsidian-markdown/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/obsidian-markdown/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "wiki-lint",
+    "description": "Run a deterministic, read-only health check on an Obsidian wiki. Use for lint, vault health check, audit wiki health, find orphans, find dead links, frontmatter audit, provenance audit, or wiki audit. Reports graph, link, frontmatter, provenance-ledger, empty-section, and stale-index findings; it does not reason broadly or repair files.",
+    "path": "/Users/gruber/.agents/skills/wiki-lint/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/wiki-lint/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "wiki",
+    "description": "Initialize, adopt, and route work for a separate Obsidian knowledge vault through the portable claude-obsidian core. Use for vault setup, scaffolding, workspace selection, cross-project configuration, or choosing the correct wiki sub-skill. Triggers: /wiki, set up wiki, scaffold vault, create knowledge base, adopt this vault, Obsidian vault, second brain setup, persistent wiki.",
+    "path": "/Users/gruber/.agents/skills/wiki/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/wiki/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "canvas",
+    "description": "Create, inspect, and update Obsidian JSON Canvas boards with text, file, link, group, and edge nodes. Use for canvas status, canvas lists, visual maps, zones, spatial layouts, adding vault notes or media to a .canvas file, and requests such as create canvas, add to canvas, or put this on the canvas.",
+    "path": "/Users/gruber/.agents/skills/canvas/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/canvas/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "wiki-retrieve",
+    "description": "Build and query a vault-local contextual BM25 retrieval index with optional multilingual Nomic cosine reranking; use for retrieve, hybrid retrieval, BM25, rerank, contextual retrieval, chunk search, vault search, semantic search, find relevant passages, or retrieval diagnostics. Derived caches stay under .vault-meta, remote egress requires explicit consent, and unavailable reranking falls back deterministically.",
+    "path": "/Users/gruber/.agents/skills/wiki-retrieve/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/wiki-retrieve/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "obsidian-bases",
+    "description": "Explain, draft, and validate Obsidian Bases .base files with filters, formulas, properties, summaries, and table, card, or list views. Use for Obsidian Bases, database-like vault views, dynamic tables, reading lists, task trackers, filters, formulas, summaries, and .base file edits.",
+    "path": "/Users/gruber/.agents/skills/obsidian-bases/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/obsidian-bases/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "wiki-cli",
+    "description": "Detect and use the official Obsidian command-line interface for read-only vault access; use for wiki-cli, Obsidian CLI, Obsidian read, Obsidian search, vault transport, which transport, transport detection, backlinks, tags, or Obsidian command line. Mutations always go through the claude-obsidian transaction core.",
+    "path": "/Users/gruber/.agents/skills/wiki-cli/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/wiki-cli/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "wiki-fold",
+    "description": "Create a bounded, extractive, structurally idempotent rollup of recent Obsidian wiki log entries, with dry-run preview by default and one optional transaction apply. Use for manual log compression without modifying child pages. Triggers: fold the log, run a fold, run wiki-fold, log rollup, roll up log entries, commit the fold.",
+    "path": "/Users/gruber/.agents/skills/wiki-fold/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/wiki-fold/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "wiki-query",
+    "description": "Answer an explicitly vault-scoped question from an Obsidian wiki without changing it. Use when the user selects the vault as the evidence source: query the wiki, query quick, query deep, explain from the wiki, summarize the vault, find in wiki, search the wiki, or based on the wiki. Do not route ordinary general-knowledge questions here.",
+    "path": "/Users/gruber/.agents/skills/wiki-query/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/wiki-query/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "save",
+    "description": "Save a user-selected answer, decision, insight, or session summary into an Obsidian vault as one reviewed transaction. Use only when the user explicitly asks to preserve specific conversation content, not when they supply a file or URL to ingest. Triggers: /save, save this, save that answer, file this conversation, save this analysis, keep this insight, preserve this chat result.",
+    "path": "/Users/gruber/.agents/skills/save/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/Documents/настройка общий настроек/claude-obsidian-upstream/skills/save/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "engineering-research",
+    "description": "Build a compact, read-only engineering context from the Knowledge vault, current code, and live sources when needed.",
+    "path": "/Users/gruber/.agents/skills/engineering-research/SKILL.md",
+    "source": "/Users/gruber/.agents/skills",
+    "resolved_path": "/Users/gruber/.agents/skills/engineering-research/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "find-skills",
+    "description": "Helps users discover and install agent skills when they ask questions like \"how do I do X\", \"find a skill for X\", \"is there a skill that can...\", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.",
+    "path": "/Users/gruber/.codex/skills/find-skills/SKILL.md",
+    "source": "/Users/gruber/.codex/skills",
+    "resolved_path": "/Users/gruber/.codex/skills/find-skills/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "review-agent",
+    "description": "Perform a read-only, defect-first review of a specified code change and return every actionable finding. Use when another agent delegates review of uncommitted changes, a base-branch diff, a commit, or custom review instructions.",
+    "path": "/Users/gruber/.codex/skills/.system/review-agent/SKILL.md",
+    "source": "/Users/gruber/.codex/skills",
+    "resolved_path": "/Users/gruber/.codex/skills/.system/review-agent/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "skill-creator",
+    "description": "Create or update a Codex skill with appropriately scoped instructions and any needed supporting resources.",
+    "path": "/Users/gruber/.codex/skills/.system/skill-creator/SKILL.md",
+    "source": "/Users/gruber/.codex/skills",
+    "resolved_path": "/Users/gruber/.codex/skills/.system/skill-creator/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "plugin-creator",
+    "description": "Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/files, valid manifest defaults, and personal-marketplace entries by default. Use when Codex needs to create a new personal plugin, add optional plugin structure, generate or update marketplace entries for plugin ordering and availability metadata, or update an existing local plugin during development with the CLI-driven cachebuster and reinstall flow.",
+    "path": "/Users/gruber/.codex/skills/.system/plugin-creator/SKILL.md",
+    "source": "/Users/gruber/.codex/skills",
+    "resolved_path": "/Users/gruber/.codex/skills/.system/plugin-creator/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "skill-installer",
+    "description": "Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos).",
+    "path": "/Users/gruber/.codex/skills/.system/skill-installer/SKILL.md",
+    "source": "/Users/gruber/.codex/skills",
+    "resolved_path": "/Users/gruber/.codex/skills/.system/skill-installer/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "openai-docs",
+    "description": "Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and self-knowledge—including 'you,' 'your,' 'this app,' or 'this coding agent' when they refer to Codex—and for OpenAI APIs/products and ChatGPT Work. Also use for model choice/migration, prompting, SDKs, Responses, Realtime, agents, evals, and Chat/Work/Codex comparisons. Do not use for generic app/software tasks that merely mention Codex.",
+    "path": "/Users/gruber/.codex/skills/.system/openai-docs/SKILL.md",
+    "source": "/Users/gruber/.codex/skills",
+    "resolved_path": "/Users/gruber/.codex/skills/.system/openai-docs/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "imagegen",
+    "description": "Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas.",
+    "path": "/Users/gruber/.codex/skills/.system/imagegen/SKILL.md",
+    "source": "/Users/gruber/.codex/skills",
+    "resolved_path": "/Users/gruber/.codex/skills/.system/imagegen/SKILL.md",
+    "decision": "keep metadata discovery; read full skill only when task matches"
+  },
+  {
+    "name": "artifact-template-strategy-memorandum",
+    "description": "Create a document using the Strategy Memorandum template and its retained reference file. Use when the user selects or names Strategy Memorandum. Present strategic context, choices, rationale, risks, milestones, and a clear recommendation.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-strategy-memorandum/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-strategy-memorandum/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-investment-committee-memo",
+    "description": "Create a document using the Investment Committee Memo template and its retained reference file. Use when the user selects or names Investment Committee Memo. Prepare investment committee memos with the thesis, transaction details, financial analysis, risks, and recommendation.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-investment-committee-memo/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-investment-committee-memo/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-operating-review",
+    "description": "Create a presentation using the Operating Review template and its retained reference file. Use when the user selects or names Operating Review. Run weekly operating reviews with scorecards, functional updates, risks, decisions, and action items.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-operating-review/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-operating-review/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-financial-budget",
+    "description": "Create a spreadsheet using the Financial Budget template and its retained reference file. Use when the user selects or names Financial Budget. Model actuals, budget and scenario forecasts, variances, cash runway, and departmental plans.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-financial-budget/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-financial-budget/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-operating-calendar",
+    "description": "Create a spreadsheet using the Operating Calendar template and its retained reference file. Use when the user selects or names Operating Calendar. Plan annual and monthly operating milestones, campaigns, launches, deadlines, and recurring events.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-operating-calendar/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-operating-calendar/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-project-kickoff",
+    "description": "Create a presentation using the Project Kickoff template and its retained reference file. Use when the user selects or names Project Kickoff. Align teams on project goals, scope, roles, milestones, risks, and the working model.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-project-kickoff/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-project-kickoff/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-simple-dark-mode",
+    "description": "Create a presentation using the Simple Dark Mode template and its retained reference file. Use when the user selects or names Simple Dark Mode. Create clean dark-mode presentations with bold typography, simple sections, charts, and imagery.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-simple-dark-mode/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-simple-dark-mode/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-design-report",
+    "description": "Create a document using the Design Report template and its retained reference file. Use when the user selects or names Design Report. Produce design reports with an executive summary, key findings, implications, recommendations, and appendix.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-design-report/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-design-report/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-legal-memorandum",
+    "description": "Create a document using the Legal Memorandum template and its retained reference file. Use when the user selects or names Legal Memorandum. Draft legal memoranda with the issue, brief answer, relevant facts, analysis, and conclusion.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-legal-memorandum/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-legal-memorandum/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-experiment-analysis",
+    "description": "Create a document using the Experiment Analysis template and its retained reference file. Use when the user selects or names Experiment Analysis. Analyze experiments with hypotheses, methodology, results, interpretation, limitations, and next steps.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-experiment-analysis/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-experiment-analysis/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-project-tracker",
+    "description": "Create a spreadsheet using the Project Tracker template and its retained reference file. Use when the user selects or names Project Tracker. Manage workstreams, tasks, owners, status, priority, dates, launch pulse, and a Gantt schedule.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-project-tracker/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-project-tracker/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-system-design",
+    "description": "Create a document using the System Design template and its retained reference file. Use when the user selects or names System Design. Document system architecture, requirements, components, data flows, APIs, tradeoffs, and operational considerations.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-system-design/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-system-design/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-three-statement-forecast",
+    "description": "Create a spreadsheet using the Three-Statement Forecast template and its retained reference file. Use when the user selects or names Three-Statement Forecast. Build an integrated income statement, balance sheet, and cash flow forecast with assumptions, checks, and an executive summary.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-three-statement-forecast/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-three-statement-forecast/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-simple-light-mode",
+    "description": "Create a presentation using the Simple Light Mode template and its retained reference file. Use when the user selects or names Simple Light Mode. Create clean light-mode presentations with spacious typography, simple sections, charts, and imagery.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-simple-light-mode/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-simple-light-mode/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-team-alignment",
+    "description": "Create a presentation using the Team Alignment template and its retained reference file. Use when the user selects or names Team Alignment. Facilitate team offsites and planning with context, goals, priorities, decisions, and action items.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-team-alignment/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-team-alignment/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-business-review",
+    "description": "Create a presentation using the Business Review template and its retained reference file. Use when the user selects or names Business Review. Review business performance, KPIs, segment results, strategic priorities, decisions, and outlook.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-business-review/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-business-review/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-market-trends-report",
+    "description": "Create a presentation using the Market Trends Report template and its retained reference file. Use when the user selects or names Market Trends Report. Communicate market or industry trends, supporting evidence, implications, and recommended responses.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-market-trends-report/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-market-trends-report/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-analytics-dashboard",
+    "description": "Create a spreadsheet using the Analytics Dashboard template and its retained reference file. Use when the user selects or names Analytics Dashboard. Monitor acquisition, engagement, retention, revenue, and conversion funnel KPIs with charts.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-analytics-dashboard/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-analytics-dashboard/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-sales-pipeline",
+    "description": "Create a spreadsheet using the Sales Pipeline template and its retained reference file. Use when the user selects or names Sales Pipeline. Track opportunities, stages, owners, deal sizes, probabilities, forecasts, next steps, and risks.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-sales-pipeline/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-sales-pipeline/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "artifact-template-minimal-letterhead",
+    "description": "Create a document using the Minimal Letterhead template and its retained reference file. Use when the user selects or names Minimal Letterhead. Write professional business letters with sender, recipient, message, and signature fields in a minimal letterhead layout.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-minimal-letterhead/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/openai-templates/0.1.1/skills/artifact-template-minimal-letterhead/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "plugin-management",
+    "description": "Discover and suggest relevant plugins, inspect app permissions and dependencies, and manage plugin connections or removal. Use when the user asks about plugins or when a task would materially benefit from an external app, account, service, or data source that available tools cannot access.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/plugin-management/0.1.0/skills/plugin-management/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/plugin-management/0.1.0/skills/plugin-management/SKILL.md",
+    "decision": "infrastructure; not changed"
+  },
+  {
+    "name": "sites-building",
+    "description": "Use Sites when the user wants a complete website built for them, such as a landing page, portfolio, dashboard, portal, tracker, hub, or internal tool, or wants to modify a website built with Sites. Do not use for development work in other web projects unless the user explicitly requests Sites.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/sites/0.1.71/skills/sites-building/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/sites/0.1.71/skills/sites-building/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "sites-preview-troubleshooting",
+    "description": "Diagnose and recover failed supervised sites-preview sessions after sites-building. Applies only to the managed-linux execution profile, not portable previews.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/sites/0.1.71/skills/sites-preview-troubleshooting/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/sites/0.1.71/skills/sites-preview-troubleshooting/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "sites-hosting",
+    "description": "Host websites with Sites. Use after `sites-building` to publish new sites and edits, for requested website publishing or deployment, or for hosting management. A project containing `.openai/hosting.json` uses Sites hosting only when the current request concerns that Site. Publishing an npm package or standalone asset is not website publishing. Honor an explicit request to use another hosting provider.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/sites/0.1.71/skills/sites-hosting/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated-remote/sites/0.1.71/skills/sites-hosting/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "using-git-worktrees",
+    "description": "Use when starting feature work that needs isolation from current workspace or before executing implementation plans - ensures an isolated workspace exists via native tools or git worktree fallback",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/using-git-worktrees/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/using-git-worktrees/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "test-driven-development",
+    "description": "Use when implementing any feature or bugfix, before writing implementation code",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/test-driven-development/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/test-driven-development/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "systematic-debugging",
+    "description": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/systematic-debugging/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/systematic-debugging/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "using-superpowers",
+    "description": "Use when starting any conversation - establishes how to find and use skills, requiring skill invocation before ANY response including clarifying questions",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/using-superpowers/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/using-superpowers/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "dispatching-parallel-agents",
+    "description": "Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/dispatching-parallel-agents/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/dispatching-parallel-agents/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "executing-plans",
+    "description": "Use when you have a written implementation plan to execute in a separate session with review checkpoints",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/executing-plans/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/executing-plans/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "finishing-a-development-branch",
+    "description": "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/finishing-a-development-branch/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/finishing-a-development-branch/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "brainstorming",
+    "description": "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/brainstorming/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/brainstorming/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "writing-plans",
+    "description": "Use when you have a spec or requirements for a multi-step task, before touching code",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/writing-plans/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/writing-plans/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "requesting-code-review",
+    "description": "Use when completing tasks, implementing major features, or before merging to verify work meets requirements",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/requesting-code-review/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/requesting-code-review/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "receiving-code-review",
+    "description": "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/receiving-code-review/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/receiving-code-review/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "writing-skills",
+    "description": "Use when creating new skills, editing existing skills, or verifying skills work before deployment",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/writing-skills/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/writing-skills/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "verification-before-completion",
+    "description": "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/verification-before-completion/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/verification-before-completion/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "subagent-driven-development",
+    "description": "Use when executing implementation plans with independent tasks in the current session",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/subagent-driven-development/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-curated/superpowers/1dc19589/skills/subagent-driven-development/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "template-creator",
+    "description": "Create or update a reusable personal Codex artifact-template skill. Use when the user invokes $template-creator or asks in natural language to create a reusable template from a reference document, presentation, spreadsheet, Google Docs, Slides, or Sheets link, ImageGen or Product Design image, email, Slack message, or Site project, or explicitly asks to edit or update a passed artifact-template skill. Do not use for one-off creation from an existing template.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/template-creator/26.904.11930/skills/template-creator/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/template-creator/26.904.11930/skills/template-creator/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "Spreadsheets",
+    "description": "Create, edit, analyze, and verify standalone spreadsheet files or Google Sheets-ready workbooks, including .xlsx, .xls, .csv, and .tsv. Do not use for live controlling Microsoft Excel app or a live Excel session.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/spreadsheets/26.904.11930/skills/spreadsheets/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/spreadsheets/26.904.11930/skills/spreadsheets/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "excel-live-control",
+    "description": "Control an open or active Microsoft Excel workbook through the ChatGPT add-in or connected session. Use when the user tags the Microsoft Excel app in Codex or follows up on an established live Excel task. Do not use for standalone spreadsheet files or Google Sheets.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/spreadsheets/26.904.11930/skills/excel-live-control/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/spreadsheets/26.904.11930/skills/excel-live-control/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "pdf",
+    "description": "Read, create, inspect, render, and verify PDF files where visual layout matters, including fillable AcroForms. Use Poppler rendering plus Python tools such as reportlab, pdfplumber, and pypdf for generation and extraction.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/pdf/26.904.11930/skills/pdf/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/pdf/26.904.11930/skills/pdf/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "Presentations",
+    "description": "Read, create or edit PowerPoint or Google Slides decks. Use for presentation, slide deck, PowerPoint, PPT, PPTX, or Google Slides requests.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/presentations/26.904.11930/skills/presentations/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/presentations/26.904.11930/skills/presentations/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "documents",
+    "description": "Create, edit, redline, and comment on `.docx`, Word, and Google Docs-targeted document artifacts inside the container, with a strict render-and-verify workflow. Use `render_docx.py` to generate page PNGs (and optional PDF) for visual QA, then iterate until layout is flawless before delivering the final document.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/documents/26.904.11930/skills/documents/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-primary-runtime/documents/26.904.11930/skills/documents/SKILL.md",
+    "decision": "disabled with project plugin override"
+  },
+  {
+    "name": "visualize",
+    "description": "Create visualizations and interactive tools directly in conversation. Proactively use to show how something works; explore 'what happens when', 'what changes', or 'help me understand'; compare or inspect; create simulations, maps, charts, graphs, and mockups. Use standard tools for static scientific figures.",
+    "path": "/Users/gruber/.codex/plugins/cache/openai-bundled/visualize/1.0.41/skills/visualize/SKILL.md",
+    "source": "/Users/gruber/.codex/plugins/cache",
+    "resolved_path": "/Users/gruber/.codex/plugins/cache/openai-bundled/visualize/1.0.41/skills/visualize/SKILL.md",
+    "decision": "disabled with project plugin override"
+  }
+]

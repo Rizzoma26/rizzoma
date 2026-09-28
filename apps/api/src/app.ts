@@ -25,6 +25,9 @@ function cors(config: AppConfig): RequestHandler {
 
 export function createApp(config: AppConfig, pool: DatabasePool): express.Express {
   const app = express();
+  // Keep route matching aligned with nginx's exact public-route exclusions.
+  app.enable('case sensitive routing');
+  app.enable('strict routing');
   if (config.trustProxyHops) app.set('trust proxy', config.trustProxyHops);
   app.disable('x-powered-by');
   app.use(requestContext, helmet(), cors(config), express.json({ limit: '16kb' }));
@@ -32,6 +35,7 @@ export function createApp(config: AppConfig, pool: DatabasePool): express.Expres
   const repository = new PostgresAuthRepository(pool);
   const auth = new AuthService(repository, {
     botToken: config.botToken,
+    allowedTelegramIds: config.appEnv === 'dev' ? config.devAllowedTgIds : undefined,
     telegramAuthMaxAgeSeconds: config.telegramAuthMaxAgeSeconds,
     sessionTtlSeconds: config.sessionTtlSeconds
   });
@@ -46,9 +50,18 @@ export function createApp(config: AppConfig, pool: DatabasePool): express.Expres
     response.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'unavailable' });
   });
 
+  const cookieName = `__Host-rizzoma-${config.appEnv}`;
+  app.use('/api', (_request, response, next) => { response.setHeader('Cache-Control', 'no-store'); next(); });
+
   app.post('/api/v1/registrations/telegram', registrationLimit, async (request, response) => {
     const input = parseBody(TelegramRegistrationRequestSchema, request);
-    response.status(200).json(await auth.registerMiniApp(input.initData, input.referralCode));
+    const result = await auth.registerMiniApp(input.initData, input.referralCode);
+    response.cookie(cookieName, result.accessToken, {
+      httpOnly: true, secure: true, sameSite: 'strict', path: '/',
+      maxAge: config.sessionTtlSeconds * 1000
+    });
+    const { accessToken: _accessToken, ...participant } = result;
+    response.status(200).json(participant);
   });
 
   app.post('/api/v1/registrations/bot', botRegistrationLimit, async (request, response) => {
@@ -58,12 +71,17 @@ export function createApp(config: AppConfig, pool: DatabasePool): express.Expres
     response.status(200).json(await auth.registerBot(input, timestamp, signature));
   });
 
-  app.get('/api/v1/me', async (request, response) => {
-    const header = String(request.header('authorization') ?? '');
-    const match = /^Bearer\s+(.+)$/i.exec(header);
-    if (!match?.[1]) throw new AppError(401, 'AUTH_REQUIRED', 'Authorization is required');
-    response.json(await auth.authenticate(match[1]));
-  });
+  const session: RequestHandler = async (request, response, next) => {
+    const cookies = String(request.header('cookie') ?? '').split(';').map(value => value.trim());
+    const token = cookies.find(value => value.startsWith(`${cookieName}=`))?.slice(cookieName.length + 1);
+    if (!token) throw new AppError(401, 'AUTH_REQUIRED', 'Authorization is required');
+    response.locals.identity = await auth.authenticate(token);
+    next();
+  };
+  // All subsequently added v1 endpoints inherit session protection.
+  app.use('/api/v1', session);
+  app.get('/api/v1/me', (_request, response) => response.json(response.locals.identity));
+  app.get('/api/v1/session', (_request, response) => response.sendStatus(204));
 
   app.use((_request, _response, next) => next(new AppError(404, 'NOT_FOUND', 'Route not found')));
   app.use(errorHandler);

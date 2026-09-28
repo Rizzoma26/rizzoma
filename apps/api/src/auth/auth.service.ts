@@ -13,19 +13,27 @@ export class AuthService {
     private readonly repository: PostgresAuthRepository,
     private readonly options: {
       botToken: string;
+      allowedTelegramIds?: Set<string> | undefined;
       telegramAuthMaxAgeSeconds: number;
       sessionTtlSeconds: number;
       now?: () => Date;
     }
   ) {}
 
-  async registerMiniApp(initData: string, referralCode?: string): Promise<AuthResponse> {
+  private checkAccess(id: string): void {
+    if (this.options.allowedTelegramIds && !this.options.allowedTelegramIds.has(id)) {
+      throw new AppError(403, 'DEV_ACCESS_DENIED', 'User is not allowed in this environment');
+    }
+  }
+
+  async registerMiniApp(initData: string, referralCode?: string): Promise<AuthResponse & { accessToken: string }> {
     const now = this.options.now?.() ?? new Date();
     const telegramUser = validateTelegramInitData(initData, {
       botToken: this.options.botToken,
       maxAgeSeconds: this.options.telegramAuthMaxAgeSeconds,
       now
     });
+    this.checkAccess(telegramUser.id);
     const registration = await this.repository.registerUser(telegramUser, 'mini_app', referralCode);
     if (registration.user.status !== 'active') throw new AppError(403, 'USER_BLOCKED', 'User is not allowed to sign in');
 
@@ -69,6 +77,7 @@ export class AuthService {
       throw new AppError(401, 'INVALID_BOT_SIGNATURE', 'Bot registration signature is invalid');
     }
 
+    this.checkAccess(input.telegramUser.id);
     const registration = await this.repository.registerUser(input.telegramUser, 'bot', input.referralCode);
     if (registration.user.status !== 'active') throw new AppError(403, 'USER_BLOCKED', 'User is not allowed to register');
     return {
@@ -95,6 +104,7 @@ export class AuthService {
     }
     const user = await this.repository.findActiveSession(hashToken(accessToken));
     if (!user) throw new AppError(401, 'INVALID_ACCESS_TOKEN', 'Access token is invalid or expired');
+    this.checkAccess(user.telegramUserId);
     return { userId: user.id, telegramUserId: user.telegramUserId };
   }
 }

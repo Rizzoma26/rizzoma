@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { z } from 'zod';
 
 const ConfigSchema = z.object({
+  APP_ENV: z.enum(['dev', 'prod']),
+  DEV_ALLOWED_TG_IDS: z.string().default(''),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(8081),
   DATABASE_URL: z.string().url().refine(
@@ -12,13 +14,15 @@ const ConfigSchema = z.object({
   PG_CONNECTION_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(5_000),
   PG_IDLE_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(30_000),
   BOT_TOKEN: z.string().min(20),
-  TELEGRAM_AUTH_MAX_AGE_SECONDS: z.coerce.number().int().min(60).max(604_800).default(86_400),
+  TELEGRAM_AUTH_MAX_AGE_SECONDS: z.coerce.number().int().min(60).max(604_800).default(300),
   SESSION_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400).default(900),
   ALLOWED_ORIGINS: z.string().min(1),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0)
 });
 
 export interface AppConfig {
+  appEnv: 'dev' | 'prod';
+  devAllowedTgIds: Set<string>;
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   databaseUrl: string;
@@ -38,7 +42,16 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   if (origins.some((origin) => origin === '*' || !/^https?:\/\//.test(origin))) {
     throw new Error('ALLOWED_ORIGINS must contain exact http(s) origins; wildcards are forbidden');
   }
+  const ids = parsed.DEV_ALLOWED_TG_IDS.split(',').map(value => value.trim()).filter(Boolean);
+  if (ids.some(id => !/^[1-9][0-9]*$/.test(id)) || (parsed.APP_ENV === 'dev' && !ids.length)) {
+    throw new Error('Dev requires a non-empty valid DEV_ALLOWED_TG_IDS');
+  }
+  if (origins.length !== 1 || origins.some(origin => new URL(origin).origin !== origin || !origin.startsWith('https://'))) {
+    throw new Error('Configure one exact HTTPS origin per environment');
+  }
   return {
+    appEnv: parsed.APP_ENV,
+    devAllowedTgIds: new Set(ids),
     nodeEnv: parsed.NODE_ENV,
     port: parsed.PORT,
     databaseUrl: parsed.DATABASE_URL,

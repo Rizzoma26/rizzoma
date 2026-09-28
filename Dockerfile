@@ -51,8 +51,10 @@ CMD ["node", "bot/bot.js"]
 FROM nginx:1.28-alpine AS web
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/config.js.template /etc/nginx/templates/config.js.template
-COPY --chown=nginx:nginx index.html registration.js economy.js engagement.js logo.svg /usr/share/nginx/html/
-COPY --chown=nginx:nginx legacy /usr/share/nginx/html/legacy
+COPY --chown=nginx:nginx index.html /usr/share/nginx/html/app.html
+COPY --chown=nginx:nginx registration.js economy.js engagement.js /usr/share/nginx/html/
+COPY --chown=nginx:nginx assets /usr/share/nginx/html/assets
+COPY --chown=nginx:nginx docker/bootstrap.html docker/bootstrap.js /usr/share/nginx/html/
 ENV NGINX_ENVSUBST_OUTPUT_DIR=/usr/share/nginx/html
 RUN rm -f /etc/nginx/conf.d/default.conf && chown -R nginx:nginx /usr/share/nginx/html
 USER nginx

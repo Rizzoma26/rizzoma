@@ -1,0 +1,25 @@
+# Project defaults; enable extra capabilities only for a concrete task.
+model_reasoning_effort = "medium"
+
+[features]
+apps = false
+
+# Inherited legacy runtime: disabled with its real transport.
+[mcp_servers.node_repl]
+command = "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+args = []
+enabled = false
+
+[plugins]
+"documents@openai-primary-runtime" = { enabled = false }
+"pdf@openai-primary-runtime" = { enabled = false }
+"spreadsheets@openai-primary-runtime" = { enabled = false }
+"presentations@openai-primary-runtime" = { enabled = false }
+"template-creator@openai-primary-runtime" = { enabled = false }
+"visualize@openai-bundled" = { enabled = false }
+"sites@openai-curated-remote" = { enabled = false }
+"browser@openai-bundled" = { enabled = false }
+"computer-use@openai-bundled" = { enabled = false }
+"unified-computer-use@openai-bundled" = { enabled = false }
+"superpowers@openai-curated" = { enabled = false }
+"openai-templates@openai-curated-remote" = { enabled = false }

@@ -1,4 +1,4 @@
-/* Статика для автотестов: тот же набор файлов, что уезжает на хостинг.
+/* Открытая статика только для локальных автотестов, без production gate.
    Без зависимостей — чтобы CI не тянул ничего ради http.server. */
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -27,4 +27,4 @@ http.createServer(async (req, res) => {
   } catch(e){
     res.writeHead(404, {'Content-Type':'text/plain; charset=utf-8'}).end('404');
   }
-}).listen(PORT, () => console.log('static on :' + PORT));
+}).listen(PORT, '127.0.0.1', () => console.log('static on 127.0.0.1:' + PORT));

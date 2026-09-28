@@ -31,17 +31,21 @@ const ECON = require('../economy.js');
 const ENG  = require('../engagement.js');
 
 const TOKEN      = process.env.BOT_TOKEN;
-const APP_URL    = process.env.APP_URL;                       // https://…/index.html
+const APP_URL    = process.env.APP_URL;                       // HTTPS bootstrap URL
 const REGISTRATION_API_BASE = String(process.env.REGISTRATION_API_BASE || '').replace(/\/+$/, '');
 const STORE      = process.env.DATABASE_URL ? new PostgresBotStore(process.env.DATABASE_URL) : null;
 const PORT       = Number(process.env.PORT || 8080);
 const ORIGIN     = process.env.CORS_ORIGIN || '*';
-const MAX_AGE    = 24 * 60 * 60;                              // initData живёт сутки
+const MAX_AGE    = Number(process.env.TELEGRAM_AUTH_MAX_AGE_SECONDS || 300);
 
 /* Платежи. PROVIDER_TOKEN выдаёт @BotFather → /mybots → Payments
    (ЮKassa, Robokassa, CloudPayments — см. README). Тестовый токен
    провайдера содержит TEST и деньги не списывает. */
-const PROVIDER_TOKEN = process.env.PROVIDER_TOKEN || '';
+const APP_ENV = process.env.APP_ENV;
+const DEV_IDS = new Set(String(process.env.DEV_ALLOWED_TG_IDS || '').split(',').map(s => s.trim()).filter(Boolean));
+const QA_ENABLED = APP_ENV === 'dev' && process.env.QA_ENABLED === 'true';
+const PAYMENT_MODE = process.env.PAYMENT_MODE || 'disabled';
+const PROVIDER_TOKEN = PAYMENT_MODE === 'disabled' ? '' : (process.env.PROVIDER_TOKEN || '');
 const CURRENCY  = process.env.CURRENCY || 'RUB';
 const PRICES = {
   std: numOrNull(process.env.PRICE_STD),
@@ -182,7 +186,7 @@ async function participantForRequest(req, res, tg, referralCode){
   try {
     return await participantFor(tg, referralCode);
   } catch(error) {
-    console.error('participant registration failed:', error.message);
+    console.error('participant registration failed');
     res.status(503).json({error:'registration unavailable'});
     return null;
   }
@@ -194,9 +198,10 @@ const refsOf = u => u && Number.isInteger(u.refs)
   ? u.refs : [...users.values()].filter(x => x.invitedBy === u.code && x.paid).length;
 
 /* ---------- валидация initData (HMAC «WebAppData») ---------- */
-function validateInitData(initData){
+function validateInitData(initData, checkAge = true){
   if(typeof initData !== 'string' || !initData) return null;
   const params = new URLSearchParams(initData);
+  if(new Set(params.keys()).size !== [...params.keys()].length) return null;
   const hash = params.get('hash');
   // строгий формат обязателен: Buffer.from(hex) молча обрезает строку на
   // первом невалидном символе, и подпись с мусором на хвосте прошла бы сравнение
@@ -215,13 +220,23 @@ function validateInitData(initData){
   if(a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
 
   const authDate = Number(params.get('auth_date') || 0);
-  if(!authDate || Date.now()/1000 - authDate > MAX_AGE) return null;
+  if(!Number.isInteger(authDate) || authDate <= 0 || (checkAge && Date.now()/1000 - authDate > MAX_AGE) || authDate - Date.now()/1000 > 60) return null;
 
-  try { return JSON.parse(params.get('user') || 'null'); } catch { return null; }
+  try {
+    const user = JSON.parse(params.get('user') || 'null');
+    return user && Number.isSafeInteger(user.id) && user.id > 0 && typeof user.first_name === 'string' ? user : null;
+  } catch { return null; }
 }
 
 /* ============================ БОТ ============================ */
 const bot = new Bot(TOKEN);
+bot.use(async (ctx, next) => {
+  const actor = ctx.chatMember?.new_chat_member.user
+    || ctx.chatBoost?.boost.source?.user || ctx.removedChatBoost?.source?.user
+    || ctx.from;
+  if(APP_ENV === 'dev' && (!actor || !DEV_IDS.has(String(actor.id)))) return;
+  return next();
+});
 
 const openKeyboard = () => new InlineKeyboard().webApp('Открыть RIZZOMA', APP_URL);
 
@@ -234,7 +249,7 @@ bot.command('start', async ctx => {
   try {
     participant = await participantFor(tg, referral);
   } catch(error) {
-    console.error('participant registration failed:', error.message);
+    console.error('participant registration failed');
     await ctx.reply('Регистрация временно недоступна. Попробуй ещё раз через минуту.');
     return;
   }
@@ -264,6 +279,10 @@ bot.command('start', async ctx => {
    что сервер посчитал бы сейчас: цена в payload клиенту не принадлежит. */
 bot.on('pre_checkout_query', async ctx => {
   const q = ctx.preCheckoutQuery;
+  if(APP_ENV && PAYMENT_MODE === 'disabled') {
+    await ctx.answerPreCheckoutQuery(false, 'Оплата сейчас недоступна');
+    return;
+  }
   try {
     const p = JSON.parse(q.invoice_payload || '{}');
     if(STORE){
@@ -340,6 +359,7 @@ const isDiscussion = id => DISCUSSION_ID !== null && Number(id) === DISCUSSION_I
 function payee(user){
   if(!user || user.is_bot) return null;
   const id = String(user.id || '');
+  if(APP_ENV === 'dev' && !DEV_IDS.has(id)) return null;
   return /^\d+$/.test(id) ? id : null;
 }
 async function engAward(user, rule, subject){
@@ -423,8 +443,9 @@ bot.catch(err => {
 /* ============================ API ============================ */
 const app = express();
 app.use(express.json({ limit: '64kb' }));
-const asyncRoute = handler => (req, res, next) => Promise.resolve(handler(req, res)).catch(next);
+const asyncRoute = handler => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 app.use((req, res, next) => {
+  if(req.headers.origin && ORIGIN !== '*' && req.headers.origin !== ORIGIN) return res.status(403).json({error:'origin forbidden'});
   res.set('Access-Control-Allow-Origin', ORIGIN);
   res.set('Access-Control-Allow-Headers', 'Content-Type');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -432,14 +453,34 @@ app.use((req, res, next) => {
   next();
 });
 
+// Production always has REGISTRATION_API_BASE. Imported legacy unit tests do not.
+app.use('/api', asyncRoute(async (req, res, next) => {
+  if(!REGISTRATION_API_BASE) {
+    if(APP_ENV) return res.status(503).json({error:'session service unavailable'});
+    return next();
+  }
+  const response = await fetch(REGISTRATION_API_BASE + '/api/v1/me', {
+    headers: {cookie: req.headers.cookie || ''}, signal: AbortSignal.timeout(5000)
+  });
+  if(!response.ok) return res.status(response.status === 403 ? 403 : 401).json({error:'session required'});
+  req.sessionIdentity = await response.json();
+  res.set('Cache-Control', 'no-store');
+  next();
+}));
+
 const auth = (req, res) => {
-  const tg = validateInitData(req.body && req.body.initData);
+  // Once signed in, session expiry controls access. Keep signature and identity
+  // checks, without expiring an active session at the shorter launch-data age.
+  const tg = validateInitData(req.body && req.body.initData, !req.sessionIdentity);
   if(!tg){ res.status(401).json({ error: 'bad initData' }); return null; }
+  if(req.sessionIdentity && req.sessionIdentity.telegramUserId !== String(tg.id)){ res.status(403).json({error:'identity mismatch'}); return null; }
+  if(APP_ENV === 'dev' && !DEV_IDS.has(String(tg.id))){ res.status(403).json({error:'forbidden'}); return null; }
   return tg;
 };
 /* админка беты: та же проверка подписи + явный список id.
    Клиентские трюки (?admin=1, пять тапов) сюда не пускают. */
 const adminAuth = (req, res) => {
+  if(APP_ENV && !QA_ENABLED){ res.status(403).json({error:'QA disabled'}); return null; }
   const tg = auth(req, res); if(!tg) return null;
   if(ADMINS.indexOf(String(tg.id)) < 0){ res.status(403).json({ error: 'forbidden' }); return null; }
   return tg;
@@ -665,6 +706,18 @@ const isEntry = process.argv[1] &&
   pathToFileURL(process.argv[1]).href === import.meta.url;
 
 if(isEntry){
+  if(!['dev', 'prod'].includes(APP_ENV)
+    || (APP_ENV === 'dev' && (!DEV_IDS.size || [...DEV_IDS].some(id => !/^[1-9][0-9]*$/.test(id))))
+    || (APP_ENV === 'prod' && process.env.QA_ENABLED === 'true')
+    || !['disabled', 'test', 'live'].includes(PAYMENT_MODE)
+    || (APP_ENV === 'dev' && PAYMENT_MODE === 'live')
+    || (APP_ENV === 'prod' && PAYMENT_MODE === 'test')
+    || (PAYMENT_MODE !== 'disabled' && (!PROVIDER_TOKEN || !PROVIDER_TOKEN.includes(PAYMENT_MODE === 'test' ? ':TEST:' : ':LIVE:')))
+    || !Number.isInteger(MAX_AGE) || MAX_AGE < 60 || MAX_AGE > 604800
+    || !URL.canParse(APP_URL) || !APP_URL.startsWith('https://') || new URL(APP_URL).origin !== ORIGIN){
+    console.error('Invalid environment, allowlist, origin, QA or payment configuration');
+    process.exit(1);
+  }
   if(!REGISTRATION_API_BASE || !STORE){
     console.error('Нужны REGISTRATION_API_BASE и DATABASE_URL: без PostgreSQL бот не запускается');
     process.exit(1);
@@ -675,7 +728,7 @@ if(isEntry){
   /* Ошибка long polling останавливает процесс: оркестратор перезапустит его. */
   bot.start({ allowed_updates: ALLOWED_UPDATES })
      .catch(err => {
-       console.error('бот не запустился (проверь BOT_TOKEN):', err.message);
+       console.error('бот не запустился (проверь настройки)');
        process.exitCode = 1;
        process.exit(1);
      });

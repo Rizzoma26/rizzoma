@@ -1,0 +1,9 @@
+# Host Caddy template. Set DEV_DOMAIN and PROD_DOMAIN to different DNS names.
+# Web containers publish only loopback ports. Adapt if WEB_PORT is changed.
+{$DEV_DOMAIN} {
+    reverse_proxy 127.0.0.1:8082
+}
+
+{$PROD_DOMAIN} {
+    reverse_proxy 127.0.0.1:8080
+}

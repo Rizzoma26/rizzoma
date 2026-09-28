@@ -1,8 +1,10 @@
-name: rizzoma-app
+name: rizzoma-${APP_ENV:?Set APP_ENV to dev or prod}
 
 services:
   postgres:
     image: postgres:16-alpine
+    mem_limit: ${SERVICE_MEMORY_LIMIT:-512m}
+    cpus: ${SERVICE_CPUS:-0.5}
     restart: unless-stopped
     environment:
       POSTGRES_DB: "${POSTGRES_DB:-rizzoma}"
@@ -20,15 +22,20 @@ services:
       - no-new-privileges:true
 
   api:
+    image: rizzoma-api:${RELEASE_TAG:?Set immutable RELEASE_TAG}
     build:
       context: .
       target: api
+    mem_limit: ${SERVICE_MEMORY_LIMIT:-512m}
+    cpus: ${SERVICE_CPUS:-0.5}
     restart: unless-stopped
     init: true
     depends_on:
       postgres:
         condition: service_healthy
     environment:
+      APP_ENV: "${APP_ENV:?Set APP_ENV}"
+      DEV_ALLOWED_TG_IDS: "${DEV_ALLOWED_TG_IDS:-}"
       NODE_ENV: production
       PORT: "8081"
       DATABASE_URL: "${DATABASE_URL:?Set DATABASE_URL in .env}"
@@ -37,11 +44,9 @@ services:
       PG_POOL_MAX: "${PG_POOL_MAX:-10}"
       PG_CONNECTION_TIMEOUT_MS: "${PG_CONNECTION_TIMEOUT_MS:-5000}"
       PG_IDLE_TIMEOUT_MS: "${PG_IDLE_TIMEOUT_MS:-30000}"
-      TELEGRAM_AUTH_MAX_AGE_SECONDS: "${TELEGRAM_AUTH_MAX_AGE_SECONDS:-86400}"
+      TELEGRAM_AUTH_MAX_AGE_SECONDS: "${TELEGRAM_AUTH_MAX_AGE_SECONDS:-300}"
       SESSION_TTL_SECONDS: "${SESSION_TTL_SECONDS:-900}"
       TRUST_PROXY_HOPS: "${TRUST_PROXY_HOPS:-1}"
-    ports:
-      - "127.0.0.1:${API_PORT:-8081}:8081"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
@@ -53,15 +58,23 @@ services:
     stop_grace_period: 15s
 
   bot:
+    image: rizzoma-bot:${RELEASE_TAG:?Set immutable RELEASE_TAG}
     build:
       context: .
       target: bot
+    mem_limit: ${SERVICE_MEMORY_LIMIT:-512m}
+    cpus: ${SERVICE_CPUS:-0.5}
     restart: unless-stopped
     init: true
     depends_on:
       api:
         condition: service_healthy
     environment:
+      APP_ENV: "${APP_ENV:?Set APP_ENV}"
+      DEV_ALLOWED_TG_IDS: "${DEV_ALLOWED_TG_IDS:-}"
+      QA_ENABLED: "${QA_ENABLED:-false}"
+      PAYMENT_MODE: "${PAYMENT_MODE:-disabled}"
+      TELEGRAM_AUTH_MAX_AGE_SECONDS: "${TELEGRAM_AUTH_MAX_AGE_SECONDS:-300}"
       BOT_TOKEN: "${BOT_TOKEN:?Set BOT_TOKEN in .env}"
       DATABASE_URL: "${DATABASE_URL:?Set DATABASE_URL in .env}"
       APP_URL: "${APP_URL:?Set APP_URL in .env}"
@@ -87,9 +100,12 @@ services:
     stop_grace_period: 15s
 
   web:
+    image: rizzoma-web:${RELEASE_TAG:?Set immutable RELEASE_TAG}
     build:
       context: .
       target: web
+    mem_limit: ${SERVICE_MEMORY_LIMIT:-512m}
+    cpus: ${SERVICE_CPUS:-0.5}
     restart: unless-stopped
     init: true
     depends_on:
@@ -98,12 +114,13 @@ services:
       bot:
         condition: service_healthy
     environment:
+      QA_ENABLED: "${QA_ENABLED:-false}"
       RIZZOMA_BOT_USERNAME: "${RIZZOMA_BOT_USERNAME:-}"
       RIZZOMA_APP_SHORT_NAME: "${RIZZOMA_APP_SHORT_NAME:-}"
       PRICE_STD: "${PRICE_STD:-null}"
       PRICE_VIP: "${PRICE_VIP:-null}"
     ports:
-      - "127.0.0.1:${WEB_PORT:-8080}:8080"
+      - "127.0.0.1:${WEB_PORT:?Set unique WEB_PORT per environment}:8080"
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz"]
       interval: 10s

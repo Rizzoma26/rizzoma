@@ -1,0 +1,39 @@
+<style>
+  .control-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:22px}
+  .control-card{border:1px solid #30303a;background:#0d0d11;overflow:hidden;cursor:pointer;transition:.2s}
+  .control-card:hover,.control-card.selected{border-color:#b6ff3c;box-shadow:0 0 26px rgba(182,255,60,.12)}
+  .phone{height:280px;position:relative;overflow:hidden;background:#141820}
+  .roads{position:absolute;inset:-20%;background:repeating-linear-gradient(34deg,transparent 0 42px,#505762 43px 46px,transparent 47px 82px);opacity:.74}
+  .fog{position:absolute;inset:0;background:radial-gradient(circle at 53% 46%,transparent 0 18%,rgba(7,8,11,.38) 30%,rgba(4,4,7,.88) 66%)}
+  .player{position:absolute;left:51%;top:44%;width:13px;height:13px;border:3px solid #fff;border-radius:50%;background:#ff2e4d;box-shadow:0 0 0 9px rgba(255,46,77,.18)}
+  .joystick{position:absolute;left:18px;bottom:18px;width:74px;height:74px;border:1px solid #69717b;border-radius:50%;background:#07080bcc;box-shadow:inset 0 0 20px #000}
+  .joystick:after{content:'';position:absolute;width:27px;height:27px;left:33px;top:15px;border-radius:50%;background:#b6ff3c;box-shadow:0 0 13px #b6ff3c}
+  .reset{position:absolute;right:16px;bottom:20px;border:1px solid #ff2e4d;color:#ff6b80;background:#08080bbb;padding:8px 10px;font:9px monospace}
+  .target{position:absolute;left:66%;top:25%;width:32px;height:32px;border:2px solid #b6ff3c;border-radius:50%}.target:after{content:'';position:absolute;inset:11px;background:#b6ff3c;border-radius:50%}
+  .path{position:absolute;left:51%;top:38%;height:95px;width:3px;background:#b6ff3c;transform:rotate(-32deg);transform-origin:top;box-shadow:0 0 10px #b6ff3c}
+  .dpad{position:absolute;left:20px;bottom:20px;width:90px;height:90px}.dpad i{position:absolute;width:28px;height:28px;border:1px solid #626a74;background:#08090bcc;color:#b6ff3c;text-align:center;line-height:28px;font:18px/28px monospace}.dpad .u{left:31px}.dpad .d{left:31px;bottom:0}.dpad .l{top:31px}.dpad .r{top:31px;right:0}
+  .copy{padding:16px}.copy h3{margin:0 0 8px}.copy p{margin:0;color:#a9a9b4;line-height:1.45}.tag{display:inline-block;margin-top:12px;padding:4px 7px;border:1px solid #493071;color:#b98cff;font:10px monospace;text-transform:uppercase}
+  @media(max-width:900px){.control-grid{grid-template-columns:1fr}.phone{height:220px}}
+</style>
+
+<h2>Как управлять QA-персонажем?</h2>
+<p class="subtitle">Во всех вариантах красный QA-маркер привязывается к ближайшей пешеходной дороге. «Сбросить» выключает симулятор и возвращает настоящее GPS/обычный режим приложения.</p>
+
+<div class="control-grid">
+  <div class="control-card option selected" data-choice="joystick" onclick="toggleSelect(this)">
+    <div class="phone"><div class="roads"></div><div class="fog"></div><div class="player"></div><div class="joystick"></div><div class="reset">СБРОСИТЬ</div></div>
+    <div class="copy"><h3>A · Плавающий джойстик</h3><p>Удерживаете и ведёте персонажа в любую сторону. Позиция непрерывно корректируется на дорожный граф; удобно проверять туман и точки.</p><span class="tag">Рекомендую для QA</span></div>
+  </div>
+
+  <div class="control-card option" data-choice="tap-route" onclick="toggleSelect(this)">
+    <div class="phone"><div class="roads"></div><div class="fog"></div><div class="path"></div><div class="target"></div><div class="player"></div><div class="reset">СБРОСИТЬ</div></div>
+    <div class="copy"><h3>B · Тап по карте</h3><p>Тап задаёт цель, персонаж идёт к ней по пешеходному маршруту. Похоже на навигатор, но неудобнее для точечной ручной проверки.</p><span class="tag">Автомаршрут</span></div>
+  </div>
+
+  <div class="control-card option" data-choice="dpad" onclick="toggleSelect(this)">
+    <div class="phone"><div class="roads"></div><div class="fog"></div><div class="player"></div><div class="dpad"><i class="u">↑</i><i class="d">↓</i><i class="l">←</i><i class="r">→</i></div><div class="reset">СБРОСИТЬ</div></div>
+    <div class="copy"><h3>C · Четыре стрелки</h3><p>Предсказуемые шаги по 10–20 метров. Надёжно на десктопе, но занимает больше места и ощущается менее естественно на телефоне.</p><span class="tag">Просто</span></div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px">Выберите способ движения. Можно будет добавить второй режим позже, но для MVP лучше один.</p>

@@ -20,6 +20,9 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, request, respo
     : bodyError ? new AppError(400, 'INVALID_JSON', 'Request body is invalid')
     : tooLarge ? new AppError(413, 'BODY_TOO_LARGE', 'Request body is too large')
     : new AppError(500, 'INTERNAL_ERROR', 'Internal server error');
+  const sqlState = error !== null && typeof error === 'object' && 'code' in error
+    && typeof error.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code)
+    ? error.code : undefined;
 
   console.error(JSON.stringify({
     level: 'error',
@@ -29,7 +32,8 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, request, respo
     route: request.route?.path ?? '<unmatched>',
     status: appError.status,
     code: appError.code,
-    errorName: error instanceof Error ? error.name : 'UnknownError'
+    errorName: error instanceof Error ? error.name : 'UnknownError',
+    ...(sqlState ? { sqlState } : {})
   }));
 
   response.status(appError.status).json({
