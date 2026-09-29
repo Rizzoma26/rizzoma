@@ -13,6 +13,7 @@
 - [`project-guide.md`](project-guide.md) — текущие границы модулей, поток авторизации и источники истины.
 - [`data-and-idempotency.md`](data-and-idempotency.md) — сущности, БД, клиентский кеш и повторные операции.
 - [`environments.md`](environments.md) — изоляция dev/prod, целевой выпуск и фактически известные ограничения проверки.
+- [`beta-config.md`](beta-config.md) — перенос настройки беты из `beta_settings` в env контура: решение, эффективные значения dev/prod, порядок выкладки и приёмка.
 - [`agent-workflows.md`](agent-workflows.md) — локальные процедуры работы с возможностями Codex.
 
 ## Контракты и требования
