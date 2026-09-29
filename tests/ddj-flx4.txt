@@ -1,0 +1,399 @@
+# Pioneer DDJ-FLX4 — все сообщения MIDI-IN из официального «List of MIDI messages» (Ver 1.0).
+# Снято из PDF построчно: орган | дека | SHIFT | условие (режим) | нажатие | статус | data1 | младший CC.
+# Объединённые в PDF ячейки «+SHIFT» размножены по своим строкам (FX ON/OFF, старт фейдерами).
+# Этим файлом tests/ddj.mjs проверяет ядро ddj-core из noisefield.html.
+PLAY/PAUSE | 1 | 0 | - | Press | 90 | 0B | -
+PLAY/PAUSE | 1 | 1 | - | Press | 90 | 0E | -
+PLAY/PAUSE | 2 | 0 | - | Press | 91 | 0B | -
+PLAY/PAUSE | 2 | 1 | - | Press | 91 | 0E | -
+CUE | 1 | 0 | - | Press | 90 | 0C | -
+CUE | 1 | 1 | - | Press | 90 | 48 | -
+CUE | 2 | 0 | - | Press | 91 | 0C | -
+CUE | 2 | 1 | - | Press | 91 | 48 | -
+SHIFT | 1 | 0 | - | Press | 90 | 3F | -
+SHIFT | 2 | 0 | - | Press | 91 | 3F | -
+JOG DIAL (Platter) | 1 | 0 | Vinyl On | Rotate | B0 | 22 | -
+JOG DIAL (Platter) | 1 | 0 | Vinyl Off | Rotate | B0 | 23 | -
+JOG DIAL (Platter) | 1 | 1 | - | Rotate | B0 | 29 | -
+JOG DIAL (Platter) | 1 | 0 | - | Touch | 90 | 36 | -
+JOG DIAL (Platter) | 1 | 1 | - | Touch | 90 | 67 | -
+JOG DIAL (Platter) | 2 | 0 | Vinyl On | Rotate | B1 | 22 | -
+JOG DIAL (Platter) | 2 | 0 | Vinyl Off | Rotate | B1 | 23 | -
+JOG DIAL (Platter) | 2 | 1 | - | Rotate | B1 | 29 | -
+JOG DIAL (Platter) | 2 | 0 | - | Touch | 91 | 36 | -
+JOG DIAL (Platter) | 2 | 1 | - | Touch | 91 | 67 | -
+JOG DIAL (Wheel side) | 1 | 0 | - | Rotate | B0 | 21 | -
+JOG DIAL (Wheel side) | 1 | 1 | - | Rotate | B0 | 21 | -
+JOG DIAL (Wheel side) | 2 | 0 | - | Rotate | B1 | 21 | -
+JOG DIAL (Wheel side) | 2 | 1 | - | Rotate | B1 | 21 | -
+IN | 1 | 0 | - | Press | 90 | 10 | -
+IN | 1 | 1 | - | Press | 90 | 4C | -
+IN | 2 | 0 | - | Press | 91 | 10 | -
+IN | 2 | 1 | - | Press | 91 | 4C | -
+OUT | 1 | 0 | - | Press | 90 | 11 | -
+OUT | 1 | 1 | - | Press | 90 | 4E | -
+OUT | 2 | 0 | - | Press | 91 | 11 | -
+OUT | 2 | 1 | - | Press | 91 | 4E | -
+4 BEAT / EXIT | 1 | 0 | - | Press | 90 | 4D | -
+4 BEAT / EXIT | 1 | 1 | - | Press | 90 | 50 | -
+4 BEAT / EXIT | 2 | 0 | - | Press | 91 | 4D | -
+4 BEAT / EXIT | 2 | 1 | - | Press | 91 | 50 | -
+CUE/LOOP CALL ◁ | 1 | 0 | - | Press | 90 | 51 | -
+CUE/LOOP CALL ◁ | 1 | 1 | - | Press | 90 | 3E | -
+CUE/LOOP CALL ◁ | 2 | 0 | - | Press | 91 | 51 | -
+CUE/LOOP CALL ◁ | 2 | 1 | - | Press | 91 | 3E | -
+CUE/LOOP CALL ▷ | 1 | 0 | - | Press | 90 | 53 | -
+CUE/LOOP CALL ▷ | 1 | 1 | - | Press | 90 | 3D | -
+CUE/LOOP CALL ▷ | 2 | 0 | - | Press | 91 | 53 | -
+CUE/LOOP CALL ▷ | 2 | 1 | - | Press | 91 | 3D | -
+BEAT SYNC | 1 | 0 | - | Press | 90 | 58 | -
+BEAT SYNC | 1 | 0 | - | Long | 90 | 5C | -
+BEAT SYNC | 1 | 1 | - | Press | 90 | 60 | -
+BEAT SYNC | 2 | 0 | - | Press | 91 | 58 | -
+BEAT SYNC | 2 | 0 | - | Long | 91 | 5C | -
+BEAT SYNC | 2 | 1 | - | Press | 91 | 60 | -
+TEMPO | 1 | 0 | - | Slide | B0 | 00 | 20
+TEMPO | 1 | 1 | - | Slide | B0 | 00 | 20
+TEMPO | 2 | 0 | - | Slide | B1 | 00 | 20
+TEMPO | 2 | 1 | - | Slide | B1 | 00 | 20
+FX CH SELECT | - | 0 | CH1 | Slide | 94 | 10 | -
+FX CH SELECT | - | 0 | CH1 | Slide | 94 | 11 | -
+FX CH SELECT | - | 0 | CH1 | Slide | 95 | 10 | -
+FX CH SELECT | - | 0 | CH1 | Slide | 95 | 11 | -
+FX CH SELECT | - | 0 | CH2 | Slide | 94 | 10 | -
+FX CH SELECT | - | 0 | CH2 | Slide | 94 | 11 | -
+FX CH SELECT | - | 0 | CH2 | Slide | 95 | 10 | -
+FX CH SELECT | - | 0 | CH2 | Slide | 95 | 11 | -
+FX CH SELECT | - | 0 | CH1&CH2 | Slide | 94 | 10 | -
+FX CH SELECT | - | 0 | CH1&CH2 | Slide | 94 | 11 | -
+FX CH SELECT | - | 0 | CH1&CH2 | Slide | 95 | 10 | -
+FX CH SELECT | - | 0 | CH1&CH2 | Slide | 95 | 11 | -
+FX SELECT | - | 0 | - | Press | 94 | 63 | -
+FX SELECT | - | 1 | - | Press | 94 | 64 | -
+BEAT ◁ | - | 0 | - | Press | 94 | 4A | -
+BEAT ◁ | - | 1 | - | Press | 94 | 66 | -
+BEAT ▷ | - | 0 | - | Press | 94 | 4B | -
+BEAT ▷ | - | 1 | - | Press | 94 | 6B | -
+LEVEL/DEPTH | - | 0 | - | Rotate | B4 | 02 | 22
+FX ON/OFF | - | 0 | CH1 | Press | 94 | 47 | -
+FX ON/OFF | - | 0 | CH2 | Press | 95 | 47 | -
+FX ON/OFF | - | 0 | CH1&CH2 | Press | 94 | 47 | -
+FX ON/OFF | - | 1 | CH1 | Press | 94 | 43 | -
+FX ON/OFF | - | 1 | CH2 | Press | 95 | 43 | -
+FX ON/OFF | - | 1 | CH1&CH2 | Press | 94 | 43 | -
+MASTER LEVEL | - | 0 | - | Rotate | B6 | 08 | 28
+MASTER CUE | - | 0 | - | Press | 96 | 63 | -
+MASTER CUE | - | 1 | - | Press | 96 | 78 | -
+TRIM | 1 | 0 | - | Rotate | B0 | 04 | 24
+TRIM | 2 | 0 | - | Rotate | B1 | 04 | 24
+EQ HI | 1 | 0 | - | Rotate | B0 | 07 | 27
+EQ HI | 2 | 0 | - | Rotate | B1 | 07 | 27
+EQ MID | 1 | 0 | - | Rotate | B0 | 0B | 2B
+EQ MID | 2 | 0 | - | Rotate | B1 | 0B | 2B
+EQ LOW | 1 | 0 | - | Rotate | B0 | 0F | 2F
+EQ LOW | 2 | 0 | - | Rotate | B1 | 0F | 2F
+CFX | 1 | 0 | - | Rotate | B6 | 17 | 37
+CFX | 2 | 0 | - | Rotate | B6 | 18 | 38
+CH CUE | 1 | 0 | - | Press | 90 | 54 | -
+CH CUE | 1 | 1 | - | Press | 90 | 68 | -
+CH CUE | 2 | 0 | - | Press | 91 | 54 | -
+CH CUE | 2 | 1 | - | Press | 91 | 68 | -
+CH FADER | 1 | 0 | - | Slide | B0 | 13 | 33
+CH FADER | 1 | 1 | From the bottom to other position | Slide | 90 | 66 | -
+CH FADER | 1 | 1 | From other than the bottom to the bottom | Slide | 90 | 52 | -
+CH FADER | 2 | 0 | - | Slide | B1 | 13 | 33
+CH FADER | 2 | 1 | From the bottom to other position | Slide | 91 | 66 | -
+CH FADER | 2 | 1 | From other than the bottom to the bottom | Slide | 91 | 52 | -
+CROSSFADER | - | 0 | - | Slide | B6 | 1F | 3F
+CROSSFADER | - | 1 | From the right edge to left | Slide | 90 | 66 | -
+CROSSFADER | - | 1 | From other than right edge to the right edge | Slide | 90 | 52 | -
+CROSSFADER | - | 1 | From the left edge to right | Slide | 91 | 66 | -
+CROSSFADER | - | 1 | From other than left edge to the left edge | Slide | 91 | 52 | -
+MIC LEVEL | - | 0 | - | Rotate | B6 | 05 | 25
+SMART CFX | - | 0 | - | Press | 96 | 00 | -
+SMART CFX | - | 1 | - | Press | 96 | 08 | -
+HEADPHONE MIX | - | 0 | - | Rotate | B6 | 0C | 2C
+HEADPHONE LEVEL | - | 0 | - | Rotate | B6 | 0D | 2D
+SMART FADER | - | 0 | - | Press | 96 | 01 | -
+SMART FADER | - | 1 | - | Press | 96 | 09 | -
+Android MONO/STEREO | - | 0 | - | Slide | 96 | 6D | -
+BROWSE | - | 0 | - | Rotate | B6 | 40 | -
+BROWSE | - | 1 | - | Rotate | B6 | 64 | -
+BROWSE | - | 0 | - | Press | 96 | 41 | -
+BROWSE | - | 1 | - | Press | 96 | 42 | -
+LOAD | 1 | 0 | - | Press | 96 | 46 | -
+LOAD | 1 | 1 | - | Press | 96 | 68 | -
+LOAD | 2 | 0 | - | Press | 96 | 47 | -
+LOAD | 2 | 1 | - | Press | 96 | 7A | -
+HOT CUE MODE | 1 | 0 | - | Press | 90 | 1B | -
+HOT CUE MODE | 1 | 1 | - | Press | 90 | 69 | -
+HOT CUE MODE | 2 | 0 | - | Press | 91 | 1B | -
+HOT CUE MODE | 2 | 1 | - | Press | 91 | 69 | -
+PAD FX 1 MODE | 1 | 0 | - | Press | 90 | 1E | -
+PAD FX 1 MODE | 1 | 1 | - | Press | 90 | 6B | -
+PAD FX 1 MODE | 2 | 0 | - | Press | 91 | 1E | -
+PAD FX 1 MODE | 2 | 1 | - | Press | 91 | 6B | -
+BEAT JUMP MODE | 1 | 0 | - | Press | 90 | 20 | -
+BEAT JUMP MODE | 1 | 1 | - | Press | 90 | 6D | -
+BEAT JUMP MODE | 2 | 0 | - | Press | 91 | 20 | -
+BEAT JUMP MODE | 2 | 1 | - | Press | 91 | 6D | -
+SAMPLER MODE | 1 | 0 | - | Press | 90 | 22 | -
+SAMPLER MODE | 1 | 1 | - | Press | 90 | 6F | -
+SAMPLER MODE | 2 | 0 | - | Press | 91 | 22 | -
+SAMPLER MODE | 2 | 1 | - | Press | 91 | 6F | -
+PERFORMANCE PAD 1 | 1 | 0 | HOT CUE MODE | Press | 97 | 00 | -
+PERFORMANCE PAD 1 | 1 | 1 | HOT CUE MODE | Press | 98 | 00 | -
+PERFORMANCE PAD 1 | 1 | 0 | PAD FX 1 MODE | Press | 97 | 10 | -
+PERFORMANCE PAD 1 | 1 | 1 | PAD FX 1 MODE | Press | 98 | 10 | -
+PERFORMANCE PAD 1 | 1 | 0 | BEAT JUMP MODE | Press | 97 | 20 | -
+PERFORMANCE PAD 1 | 1 | 1 | BEAT JUMP MODE | Press | 98 | 20 | -
+PERFORMANCE PAD 1 | 1 | 0 | SAMPLER MODE | Press | 97 | 30 | -
+PERFORMANCE PAD 1 | 1 | 1 | SAMPLER MODE | Press | 98 | 30 | -
+PERFORMANCE PAD 1 | 1 | 0 | KEYBOARD MODE | Press | 97 | 40 | -
+PERFORMANCE PAD 1 | 1 | 1 | KEYBOARD MODE | Press | 98 | 40 | -
+PERFORMANCE PAD 1 | 1 | 0 | PAD FX 2 MODE | Press | 97 | 50 | -
+PERFORMANCE PAD 1 | 1 | 1 | PAD FX 2 MODE | Press | 98 | 50 | -
+PERFORMANCE PAD 1 | 1 | 0 | BEAT LOOP MODE | Press | 97 | 60 | -
+PERFORMANCE PAD 1 | 1 | 1 | BEAT LOOP MODE | Press | 98 | 60 | -
+PERFORMANCE PAD 1 | 1 | 0 | KEY SHIFT MODE | Press | 97 | 70 | -
+PERFORMANCE PAD 1 | 1 | 1 | KEY SHIFT MODE | Press | 98 | 70 | -
+PERFORMANCE PAD 1 | 2 | 0 | HOT CUE MODE | Press | 99 | 00 | -
+PERFORMANCE PAD 1 | 2 | 1 | HOT CUE MODE | Press | 9A | 00 | -
+PERFORMANCE PAD 1 | 2 | 0 | PAD FX 1 MODE | Press | 99 | 10 | -
+PERFORMANCE PAD 1 | 2 | 1 | PAD FX 1 MODE | Press | 9A | 10 | -
+PERFORMANCE PAD 1 | 2 | 0 | BEAT JUMP MODE | Press | 99 | 20 | -
+PERFORMANCE PAD 1 | 2 | 1 | BEAT JUMP MODE | Press | 9A | 20 | -
+PERFORMANCE PAD 1 | 2 | 0 | SAMPLER MODE | Press | 99 | 30 | -
+PERFORMANCE PAD 1 | 2 | 1 | SAMPLER MODE | Press | 9A | 30 | -
+PERFORMANCE PAD 1 | 2 | 0 | KEYBOARD MODE | Press | 99 | 40 | -
+PERFORMANCE PAD 1 | 2 | 1 | KEYBOARD MODE | Press | 9A | 40 | -
+PERFORMANCE PAD 1 | 2 | 0 | PAD FX 2 MODE | Press | 99 | 50 | -
+PERFORMANCE PAD 1 | 2 | 1 | PAD FX 2 MODE | Press | 9A | 50 | -
+PERFORMANCE PAD 1 | 2 | 0 | BEAT LOOP MODE | Press | 99 | 60 | -
+PERFORMANCE PAD 1 | 2 | 1 | BEAT LOOP MODE | Press | 9A | 60 | -
+PERFORMANCE PAD 1 | 2 | 0 | KEY SHIFT MODE | Press | 99 | 70 | -
+PERFORMANCE PAD 1 | 2 | 1 | KEY SHIFT MODE | Press | 9A | 70 | -
+PERFORMANCE PAD 2 | 1 | 0 | HOT CUE MODE | Press | 97 | 01 | -
+PERFORMANCE PAD 2 | 1 | 1 | HOT CUE MODE | Press | 98 | 01 | -
+PERFORMANCE PAD 2 | 1 | 0 | PAD FX 1 MODE | Press | 97 | 11 | -
+PERFORMANCE PAD 2 | 1 | 1 | PAD FX 1 MODE | Press | 98 | 11 | -
+PERFORMANCE PAD 2 | 1 | 0 | BEAT JUMP MODE | Press | 97 | 21 | -
+PERFORMANCE PAD 2 | 1 | 1 | BEAT JUMP MODE | Press | 98 | 21 | -
+PERFORMANCE PAD 2 | 1 | 0 | SAMPLER MODE | Press | 97 | 31 | -
+PERFORMANCE PAD 2 | 1 | 1 | SAMPLER MODE | Press | 98 | 31 | -
+PERFORMANCE PAD 2 | 1 | 0 | KEYBOARD MODE | Press | 97 | 41 | -
+PERFORMANCE PAD 2 | 1 | 1 | KEYBOARD MODE | Press | 98 | 41 | -
+PERFORMANCE PAD 2 | 1 | 0 | PAD FX 2 MODE | Press | 97 | 51 | -
+PERFORMANCE PAD 2 | 1 | 1 | PAD FX 2 MODE | Press | 98 | 51 | -
+PERFORMANCE PAD 2 | 1 | 0 | BEAT LOOP MODE | Press | 97 | 61 | -
+PERFORMANCE PAD 2 | 1 | 1 | BEAT LOOP MODE | Press | 98 | 61 | -
+PERFORMANCE PAD 2 | 1 | 0 | KEY SHIFT MODE | Press | 97 | 71 | -
+PERFORMANCE PAD 2 | 1 | 1 | KEY SHIFT MODE | Press | 98 | 71 | -
+PERFORMANCE PAD 2 | 2 | 0 | HOT CUE MODE | Press | 99 | 01 | -
+PERFORMANCE PAD 2 | 2 | 1 | HOT CUE MODE | Press | 9A | 01 | -
+PERFORMANCE PAD 2 | 2 | 0 | PAD FX 1 MODE | Press | 99 | 11 | -
+PERFORMANCE PAD 2 | 2 | 1 | PAD FX 1 MODE | Press | 9A | 11 | -
+PERFORMANCE PAD 2 | 2 | 0 | BEAT JUMP MODE | Press | 99 | 21 | -
+PERFORMANCE PAD 2 | 2 | 1 | BEAT JUMP MODE | Press | 9A | 21 | -
+PERFORMANCE PAD 2 | 2 | 0 | SAMPLER MODE | Press | 99 | 31 | -
+PERFORMANCE PAD 2 | 2 | 1 | SAMPLER MODE | Press | 9A | 31 | -
+PERFORMANCE PAD 2 | 2 | 0 | KEYBOARD MODE | Press | 99 | 41 | -
+PERFORMANCE PAD 2 | 2 | 1 | KEYBOARD MODE | Press | 9A | 41 | -
+PERFORMANCE PAD 2 | 2 | 0 | PAD FX 2 MODE | Press | 99 | 51 | -
+PERFORMANCE PAD 2 | 2 | 1 | PAD FX 2 MODE | Press | 9A | 51 | -
+PERFORMANCE PAD 2 | 2 | 0 | BEAT LOOP MODE | Press | 99 | 61 | -
+PERFORMANCE PAD 2 | 2 | 1 | BEAT LOOP MODE | Press | 9A | 61 | -
+PERFORMANCE PAD 2 | 2 | 0 | KEY SHIFT MODE | Press | 99 | 71 | -
+PERFORMANCE PAD 2 | 2 | 1 | KEY SHIFT MODE | Press | 9A | 71 | -
+PERFORMANCE PAD 3 | 1 | 0 | HOT CUE MODE | Press | 97 | 02 | -
+PERFORMANCE PAD 3 | 1 | 1 | HOT CUE MODE | Press | 98 | 02 | -
+PERFORMANCE PAD 3 | 1 | 0 | PAD FX 1 MODE | Press | 97 | 12 | -
+PERFORMANCE PAD 3 | 1 | 1 | PAD FX 1 MODE | Press | 98 | 12 | -
+PERFORMANCE PAD 3 | 1 | 0 | BEAT JUMP MODE | Press | 97 | 22 | -
+PERFORMANCE PAD 3 | 1 | 1 | BEAT JUMP MODE | Press | 98 | 22 | -
+PERFORMANCE PAD 3 | 1 | 0 | SAMPLER MODE | Press | 97 | 32 | -
+PERFORMANCE PAD 3 | 1 | 1 | SAMPLER MODE | Press | 98 | 32 | -
+PERFORMANCE PAD 3 | 1 | 0 | KEYBOARD MODE | Press | 97 | 42 | -
+PERFORMANCE PAD 3 | 1 | 1 | KEYBOARD MODE | Press | 98 | 42 | -
+PERFORMANCE PAD 3 | 1 | 0 | PAD FX 2 MODE | Press | 97 | 52 | -
+PERFORMANCE PAD 3 | 1 | 1 | PAD FX 2 MODE | Press | 98 | 52 | -
+PERFORMANCE PAD 3 | 1 | 0 | BEAT LOOP MODE | Press | 97 | 62 | -
+PERFORMANCE PAD 3 | 1 | 1 | BEAT LOOP MODE | Press | 98 | 62 | -
+PERFORMANCE PAD 3 | 1 | 0 | KEY SHIFT MODE | Press | 97 | 72 | -
+PERFORMANCE PAD 3 | 1 | 1 | KEY SHIFT MODE | Press | 98 | 72 | -
+PERFORMANCE PAD 3 | 2 | 0 | HOT CUE MODE | Press | 99 | 02 | -
+PERFORMANCE PAD 3 | 2 | 1 | HOT CUE MODE | Press | 9A | 02 | -
+PERFORMANCE PAD 3 | 2 | 0 | PAD FX 1 MODE | Press | 99 | 12 | -
+PERFORMANCE PAD 3 | 2 | 1 | PAD FX 1 MODE | Press | 9A | 12 | -
+PERFORMANCE PAD 3 | 2 | 0 | BEAT JUMP MODE | Press | 99 | 22 | -
+PERFORMANCE PAD 3 | 2 | 1 | BEAT JUMP MODE | Press | 9A | 22 | -
+PERFORMANCE PAD 3 | 2 | 0 | SAMPLER MODE | Press | 99 | 32 | -
+PERFORMANCE PAD 3 | 2 | 1 | SAMPLER MODE | Press | 9A | 32 | -
+PERFORMANCE PAD 3 | 2 | 0 | KEYBOARD MODE | Press | 99 | 42 | -
+PERFORMANCE PAD 3 | 2 | 1 | KEYBOARD MODE | Press | 9A | 42 | -
+PERFORMANCE PAD 3 | 2 | 0 | PAD FX 2 MODE | Press | 99 | 52 | -
+PERFORMANCE PAD 3 | 2 | 1 | PAD FX 2 MODE | Press | 9A | 52 | -
+PERFORMANCE PAD 3 | 2 | 0 | BEAT LOOP MODE | Press | 99 | 62 | -
+PERFORMANCE PAD 3 | 2 | 1 | BEAT LOOP MODE | Press | 9A | 62 | -
+PERFORMANCE PAD 3 | 2 | 0 | KEY SHIFT MODE | Press | 99 | 72 | -
+PERFORMANCE PAD 3 | 2 | 1 | KEY SHIFT MODE | Press | 9A | 72 | -
+PERFORMANCE PAD 4 | 1 | 0 | HOT CUE MODE | Press | 97 | 03 | -
+PERFORMANCE PAD 4 | 1 | 1 | HOT CUE MODE | Press | 98 | 03 | -
+PERFORMANCE PAD 4 | 1 | 0 | PAD FX 1 MODE | Press | 97 | 13 | -
+PERFORMANCE PAD 4 | 1 | 1 | PAD FX 1 MODE | Press | 98 | 13 | -
+PERFORMANCE PAD 4 | 1 | 0 | BEAT JUMP MODE | Press | 97 | 23 | -
+PERFORMANCE PAD 4 | 1 | 1 | BEAT JUMP MODE | Press | 98 | 23 | -
+PERFORMANCE PAD 4 | 1 | 0 | SAMPLER MODE | Press | 97 | 33 | -
+PERFORMANCE PAD 4 | 1 | 1 | SAMPLER MODE | Press | 98 | 33 | -
+PERFORMANCE PAD 4 | 1 | 0 | KEYBOARD MODE | Press | 97 | 43 | -
+PERFORMANCE PAD 4 | 1 | 1 | KEYBOARD MODE | Press | 98 | 43 | -
+PERFORMANCE PAD 4 | 1 | 0 | PAD FX 2 MODE | Press | 97 | 53 | -
+PERFORMANCE PAD 4 | 1 | 1 | PAD FX 2 MODE | Press | 98 | 53 | -
+PERFORMANCE PAD 4 | 1 | 0 | BEAT LOOP MODE | Press | 97 | 63 | -
+PERFORMANCE PAD 4 | 1 | 1 | BEAT LOOP MODE | Press | 98 | 63 | -
+PERFORMANCE PAD 4 | 1 | 0 | KEY SHIFT MODE | Press | 97 | 73 | -
+PERFORMANCE PAD 4 | 1 | 1 | KEY SHIFT MODE | Press | 98 | 73 | -
+PERFORMANCE PAD 4 | 2 | 0 | HOT CUE MODE | Press | 99 | 03 | -
+PERFORMANCE PAD 4 | 2 | 1 | HOT CUE MODE | Press | 9A | 03 | -
+PERFORMANCE PAD 4 | 2 | 0 | PAD FX 1 MODE | Press | 99 | 13 | -
+PERFORMANCE PAD 4 | 2 | 1 | PAD FX 1 MODE | Press | 9A | 13 | -
+PERFORMANCE PAD 4 | 2 | 0 | BEAT JUMP MODE | Press | 99 | 23 | -
+PERFORMANCE PAD 4 | 2 | 1 | BEAT JUMP MODE | Press | 9A | 23 | -
+PERFORMANCE PAD 4 | 2 | 0 | SAMPLER MODE | Press | 99 | 33 | -
+PERFORMANCE PAD 4 | 2 | 1 | SAMPLER MODE | Press | 9A | 33 | -
+PERFORMANCE PAD 4 | 2 | 0 | KEYBOARD MODE | Press | 99 | 43 | -
+PERFORMANCE PAD 4 | 2 | 1 | KEYBOARD MODE | Press | 9A | 43 | -
+PERFORMANCE PAD 4 | 2 | 0 | PAD FX 2 MODE | Press | 99 | 53 | -
+PERFORMANCE PAD 4 | 2 | 1 | PAD FX 2 MODE | Press | 9A | 53 | -
+PERFORMANCE PAD 4 | 2 | 0 | BEAT LOOP MODE | Press | 99 | 63 | -
+PERFORMANCE PAD 4 | 2 | 1 | BEAT LOOP MODE | Press | 9A | 63 | -
+PERFORMANCE PAD 4 | 2 | 0 | KEY SHIFT MODE | Press | 99 | 73 | -
+PERFORMANCE PAD 4 | 2 | 1 | KEY SHIFT MODE | Press | 9A | 73 | -
+PERFORMANCE PAD 5 | 1 | 0 | HOT CUE MODE | Press | 97 | 04 | -
+PERFORMANCE PAD 5 | 1 | 1 | HOT CUE MODE | Press | 98 | 04 | -
+PERFORMANCE PAD 5 | 1 | 0 | PAD FX 1 MODE | Press | 97 | 14 | -
+PERFORMANCE PAD 5 | 1 | 1 | PAD FX 1 MODE | Press | 98 | 14 | -
+PERFORMANCE PAD 5 | 1 | 0 | BEAT JUMP MODE | Press | 97 | 24 | -
+PERFORMANCE PAD 5 | 1 | 1 | BEAT JUMP MODE | Press | 98 | 24 | -
+PERFORMANCE PAD 5 | 1 | 0 | SAMPLER MODE | Press | 97 | 34 | -
+PERFORMANCE PAD 5 | 1 | 1 | SAMPLER MODE | Press | 98 | 34 | -
+PERFORMANCE PAD 5 | 1 | 0 | KEYBOARD MODE | Press | 97 | 44 | -
+PERFORMANCE PAD 5 | 1 | 1 | KEYBOARD MODE | Press | 98 | 44 | -
+PERFORMANCE PAD 5 | 1 | 0 | PAD FX 2 MODE | Press | 97 | 54 | -
+PERFORMANCE PAD 5 | 1 | 1 | PAD FX 2 MODE | Press | 98 | 54 | -
+PERFORMANCE PAD 5 | 1 | 0 | BEAT LOOP MODE | Press | 97 | 64 | -
+PERFORMANCE PAD 5 | 1 | 1 | BEAT LOOP MODE | Press | 98 | 64 | -
+PERFORMANCE PAD 5 | 1 | 0 | KEY SHIFT MODE | Press | 97 | 74 | -
+PERFORMANCE PAD 5 | 1 | 1 | KEY SHIFT MODE | Press | 98 | 74 | -
+PERFORMANCE PAD 5 | 2 | 0 | HOT CUE MODE | Press | 99 | 04 | -
+PERFORMANCE PAD 5 | 2 | 1 | HOT CUE MODE | Press | 9A | 04 | -
+PERFORMANCE PAD 5 | 2 | 0 | PAD FX 1 MODE | Press | 99 | 14 | -
+PERFORMANCE PAD 5 | 2 | 1 | PAD FX 1 MODE | Press | 9A | 14 | -
+PERFORMANCE PAD 5 | 2 | 0 | BEAT JUMP MODE | Press | 99 | 24 | -
+PERFORMANCE PAD 5 | 2 | 1 | BEAT JUMP MODE | Press | 9A | 24 | -
+PERFORMANCE PAD 5 | 2 | 0 | SAMPLER MODE | Press | 99 | 34 | -
+PERFORMANCE PAD 5 | 2 | 1 | SAMPLER MODE | Press | 9A | 34 | -
+PERFORMANCE PAD 5 | 2 | 0 | KEYBOARD MODE | Press | 99 | 44 | -
+PERFORMANCE PAD 5 | 2 | 1 | KEYBOARD MODE | Press | 9A | 44 | -
+PERFORMANCE PAD 5 | 2 | 0 | PAD FX 2 MODE | Press | 99 | 54 | -
+PERFORMANCE PAD 5 | 2 | 1 | PAD FX 2 MODE | Press | 9A | 54 | -
+PERFORMANCE PAD 5 | 2 | 0 | BEAT LOOP MODE | Press | 99 | 64 | -
+PERFORMANCE PAD 5 | 2 | 1 | BEAT LOOP MODE | Press | 9A | 64 | -
+PERFORMANCE PAD 5 | 2 | 0 | KEY SHIFT MODE | Press | 99 | 74 | -
+PERFORMANCE PAD 5 | 2 | 1 | KEY SHIFT MODE | Press | 9A | 74 | -
+PERFORMANCE PAD 6 | 1 | 0 | HOT CUE MODE | Press | 97 | 05 | -
+PERFORMANCE PAD 6 | 1 | 1 | HOT CUE MODE | Press | 98 | 05 | -
+PERFORMANCE PAD 6 | 1 | 0 | PAD FX 1 MODE | Press | 97 | 15 | -
+PERFORMANCE PAD 6 | 1 | 1 | PAD FX 1 MODE | Press | 98 | 15 | -
+PERFORMANCE PAD 6 | 1 | 0 | BEAT JUMP MODE | Press | 97 | 25 | -
+PERFORMANCE PAD 6 | 1 | 1 | BEAT JUMP MODE | Press | 98 | 25 | -
+PERFORMANCE PAD 6 | 1 | 0 | SAMPLER MODE | Press | 97 | 35 | -
+PERFORMANCE PAD 6 | 1 | 1 | SAMPLER MODE | Press | 98 | 35 | -
+PERFORMANCE PAD 6 | 1 | 0 | KEYBOARD MODE | Press | 97 | 45 | -
+PERFORMANCE PAD 6 | 1 | 1 | KEYBOARD MODE | Press | 98 | 45 | -
+PERFORMANCE PAD 6 | 1 | 0 | PAD FX 2 MODE | Press | 97 | 55 | -
+PERFORMANCE PAD 6 | 1 | 1 | PAD FX 2 MODE | Press | 98 | 55 | -
+PERFORMANCE PAD 6 | 1 | 0 | BEAT LOOP MODE | Press | 97 | 65 | -
+PERFORMANCE PAD 6 | 1 | 1 | BEAT LOOP MODE | Press | 98 | 65 | -
+PERFORMANCE PAD 6 | 1 | 0 | KEY SHIFT MODE | Press | 97 | 75 | -
+PERFORMANCE PAD 6 | 1 | 1 | KEY SHIFT MODE | Press | 98 | 75 | -
+PERFORMANCE PAD 6 | 2 | 0 | HOT CUE MODE | Press | 99 | 05 | -
+PERFORMANCE PAD 6 | 2 | 1 | HOT CUE MODE | Press | 9A | 05 | -
+PERFORMANCE PAD 6 | 2 | 0 | PAD FX 1 MODE | Press | 99 | 15 | -
+PERFORMANCE PAD 6 | 2 | 1 | PAD FX 1 MODE | Press | 9A | 15 | -
+PERFORMANCE PAD 6 | 2 | 0 | BEAT JUMP MODE | Press | 99 | 25 | -
+PERFORMANCE PAD 6 | 2 | 1 | BEAT JUMP MODE | Press | 9A | 25 | -
+PERFORMANCE PAD 6 | 2 | 0 | SAMPLER MODE | Press | 99 | 35 | -
+PERFORMANCE PAD 6 | 2 | 1 | SAMPLER MODE | Press | 9A | 35 | -
+PERFORMANCE PAD 6 | 2 | 0 | KEYBOARD MODE | Press | 99 | 45 | -
+PERFORMANCE PAD 6 | 2 | 1 | KEYBOARD MODE | Press | 9A | 45 | -
+PERFORMANCE PAD 6 | 2 | 0 | PAD FX 2 MODE | Press | 99 | 55 | -
+PERFORMANCE PAD 6 | 2 | 1 | PAD FX 2 MODE | Press | 9A | 55 | -
+PERFORMANCE PAD 6 | 2 | 0 | BEAT LOOP MODE | Press | 99 | 65 | -
+PERFORMANCE PAD 6 | 2 | 1 | BEAT LOOP MODE | Press | 9A | 65 | -
+PERFORMANCE PAD 6 | 2 | 0 | KEY SHIFT MODE | Press | 99 | 75 | -
+PERFORMANCE PAD 6 | 2 | 1 | KEY SHIFT MODE | Press | 9A | 75 | -
+PERFORMANCE PAD 7 | 1 | 0 | HOT CUE MODE | Press | 97 | 06 | -
+PERFORMANCE PAD 7 | 1 | 1 | HOT CUE MODE | Press | 98 | 06 | -
+PERFORMANCE PAD 7 | 1 | 0 | PAD FX 1 MODE | Press | 97 | 16 | -
+PERFORMANCE PAD 7 | 1 | 1 | PAD FX 1 MODE | Press | 98 | 16 | -
+PERFORMANCE PAD 7 | 1 | 0 | BEAT JUMP MODE | Press | 97 | 26 | -
+PERFORMANCE PAD 7 | 1 | 1 | BEAT JUMP MODE | Press | 98 | 26 | -
+PERFORMANCE PAD 7 | 1 | 0 | SAMPLER MODE | Press | 97 | 36 | -
+PERFORMANCE PAD 7 | 1 | 1 | SAMPLER MODE | Press | 98 | 36 | -
+PERFORMANCE PAD 7 | 1 | 0 | KEYBOARD MODE | Press | 97 | 46 | -
+PERFORMANCE PAD 7 | 1 | 1 | KEYBOARD MODE | Press | 98 | 46 | -
+PERFORMANCE PAD 7 | 1 | 0 | PAD FX 2 MODE | Press | 97 | 56 | -
+PERFORMANCE PAD 7 | 1 | 1 | PAD FX 2 MODE | Press | 98 | 56 | -
+PERFORMANCE PAD 7 | 1 | 0 | BEAT LOOP MODE | Press | 97 | 66 | -
+PERFORMANCE PAD 7 | 1 | 1 | BEAT LOOP MODE | Press | 98 | 66 | -
+PERFORMANCE PAD 7 | 1 | 0 | KEY SHIFT MODE | Press | 97 | 76 | -
+PERFORMANCE PAD 7 | 1 | 1 | KEY SHIFT MODE | Press | 98 | 76 | -
+PERFORMANCE PAD 7 | 2 | 0 | HOT CUE MODE | Press | 99 | 06 | -
+PERFORMANCE PAD 7 | 2 | 1 | HOT CUE MODE | Press | 9A | 06 | -
+PERFORMANCE PAD 7 | 2 | 0 | PAD FX 1 MODE | Press | 99 | 16 | -
+PERFORMANCE PAD 7 | 2 | 1 | PAD FX 1 MODE | Press | 9A | 16 | -
+PERFORMANCE PAD 7 | 2 | 0 | BEAT JUMP MODE | Press | 99 | 26 | -
+PERFORMANCE PAD 7 | 2 | 1 | BEAT JUMP MODE | Press | 9A | 26 | -
+PERFORMANCE PAD 7 | 2 | 0 | SAMPLER MODE | Press | 99 | 36 | -
+PERFORMANCE PAD 7 | 2 | 1 | SAMPLER MODE | Press | 9A | 36 | -
+PERFORMANCE PAD 7 | 2 | 0 | KEYBOARD MODE | Press | 99 | 46 | -
+PERFORMANCE PAD 7 | 2 | 1 | KEYBOARD MODE | Press | 9A | 46 | -
+PERFORMANCE PAD 7 | 2 | 0 | PAD FX 2 MODE | Press | 99 | 56 | -
+PERFORMANCE PAD 7 | 2 | 1 | PAD FX 2 MODE | Press | 9A | 56 | -
+PERFORMANCE PAD 7 | 2 | 0 | BEAT LOOP MODE | Press | 99 | 66 | -
+PERFORMANCE PAD 7 | 2 | 1 | BEAT LOOP MODE | Press | 9A | 66 | -
+PERFORMANCE PAD 7 | 2 | 0 | KEY SHIFT MODE | Press | 99 | 76 | -
+PERFORMANCE PAD 7 | 2 | 1 | KEY SHIFT MODE | Press | 9A | 76 | -
+PERFORMANCE PAD 8 | 1 | 0 | HOT CUE MODE | Press | 97 | 07 | -
+PERFORMANCE PAD 8 | 1 | 1 | HOT CUE MODE | Press | 98 | 07 | -
+PERFORMANCE PAD 8 | 1 | 0 | PAD FX 1 MODE | Press | 97 | 17 | -
+PERFORMANCE PAD 8 | 1 | 1 | PAD FX 1 MODE | Press | 98 | 17 | -
+PERFORMANCE PAD 8 | 1 | 0 | BEAT JUMP MODE | Press | 97 | 27 | -
+PERFORMANCE PAD 8 | 1 | 1 | BEAT JUMP MODE | Press | 98 | 27 | -
+PERFORMANCE PAD 8 | 1 | 0 | SAMPLER MODE | Press | 97 | 37 | -
+PERFORMANCE PAD 8 | 1 | 1 | SAMPLER MODE | Press | 98 | 37 | -
+PERFORMANCE PAD 8 | 1 | 0 | KEYBOARD MODE | Press | 97 | 47 | -
+PERFORMANCE PAD 8 | 1 | 1 | KEYBOARD MODE | Press | 98 | 47 | -
+PERFORMANCE PAD 8 | 1 | 0 | PAD FX 2 MODE | Press | 97 | 57 | -
+PERFORMANCE PAD 8 | 1 | 1 | PAD FX 2 MODE | Press | 98 | 57 | -
+PERFORMANCE PAD 8 | 1 | 0 | BEAT LOOP MODE | Press | 97 | 67 | -
+PERFORMANCE PAD 8 | 1 | 1 | BEAT LOOP MODE | Press | 98 | 67 | -
+PERFORMANCE PAD 8 | 1 | 0 | KEY SHIFT MODE | Press | 97 | 77 | -
+PERFORMANCE PAD 8 | 1 | 1 | KEY SHIFT MODE | Press | 98 | 77 | -
+PERFORMANCE PAD 8 | 2 | 0 | HOT CUE MODE | Press | 99 | 07 | -
+PERFORMANCE PAD 8 | 2 | 1 | HOT CUE MODE | Press | 9A | 07 | -
+PERFORMANCE PAD 8 | 2 | 0 | PAD FX 1 MODE | Press | 99 | 17 | -
+PERFORMANCE PAD 8 | 2 | 1 | PAD FX 1 MODE | Press | 9A | 17 | -
+PERFORMANCE PAD 8 | 2 | 0 | BEAT JUMP MODE | Press | 99 | 27 | -
+PERFORMANCE PAD 8 | 2 | 1 | BEAT JUMP MODE | Press | 9A | 27 | -
+PERFORMANCE PAD 8 | 2 | 0 | SAMPLER MODE | Press | 99 | 37 | -
+PERFORMANCE PAD 8 | 2 | 1 | SAMPLER MODE | Press | 9A | 37 | -
+PERFORMANCE PAD 8 | 2 | 0 | KEYBOARD MODE | Press | 99 | 47 | -
+PERFORMANCE PAD 8 | 2 | 1 | KEYBOARD MODE | Press | 9A | 47 | -
+PERFORMANCE PAD 8 | 2 | 0 | PAD FX 2 MODE | Press | 99 | 57 | -
+PERFORMANCE PAD 8 | 2 | 1 | PAD FX 2 MODE | Press | 9A | 57 | -
+PERFORMANCE PAD 8 | 2 | 0 | BEAT LOOP MODE | Press | 99 | 67 | -
+PERFORMANCE PAD 8 | 2 | 1 | BEAT LOOP MODE | Press | 9A | 67 | -
+PERFORMANCE PAD 8 | 2 | 0 | KEY SHIFT MODE | Press | 99 | 77 | -
+PERFORMANCE PAD 8 | 2 | 1 | KEY SHIFT MODE | Press | 9A | 77 | -

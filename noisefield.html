@@ -180,6 +180,16 @@
   body.learn .ctl:not(.wide){ cursor:crosshair; }
   body.learn .ctl:not(.wide):hover{ background:rgba(110,168,255,.10); border-radius:4px; }
   .ctl.learning{ background:rgba(255,154,110,.18); border-radius:4px; }
+  /* Пульт DDJ-FLX4 — своим блоком под основным контроллером. */
+  .ddj{ margin-top:8px; padding-top:6px; border-top:1px solid var(--line); }
+  .ddj.gone{ display:none; }
+  .ddj details{ margin:5px 0 0; }
+  .ddj summary{ color:var(--dim); font-size:10px; cursor:pointer; user-select:none; }
+  .ddj summary:hover{ color:var(--fg); }
+  .ddj-leg{ margin:3px 0 2px; font-size:10px; line-height:1.45; color:var(--dim); }
+  .ddj-leg h5{ margin:7px 0 1px; font-size:10px; font-weight:500; color:var(--fg); letter-spacing:.06em; }
+  .ddj-leg div{ padding:1px 0; }
+  .ddj-leg b{ color:var(--accent); font-weight:500; }
 
   /* Компактный список входов в транспорте. */
   select.dev{ background:rgba(120,160,220,.10); color:var(--fg); font:inherit; font-size:11px;
@@ -6136,8 +6146,9 @@ const MIDI = {
   raw: {}, dir: {},                   // последнее сырое значение органа и куда его вели
   last: '', program: 0, ui: null, selSig: '',
 };
-const midiName  = key => MIDI.prof.ctls[key] || (key === 'pb' ? 'PB' : 'CC' + key.slice(3));
-const midiBinds = () => MIDI.banks[MIDI.bank].binds;
+// D — чьи привязки: основного входа (по умолчанию) или пульта DDJ-FLX4.
+const midiName  = (key, D = MIDI) => D.prof.ctls[key] || (key === 'pb' ? 'PB' : 'CC' + key.slice(3));
+const midiBinds = (D = MIDI) => D.banks[D.bank].binds;
 
 // Переключает банки на профиль контроллера; у нового профиля — заводские.
 function midiUseProfile(p){
@@ -6195,7 +6206,8 @@ const midiProfileOf = name => MIDI_PROFILES.find(p => p.match.test(name || '')) 
 // попавшийся. У MPK49 входов три, органы идут в основной; вспомогательные
 // Windows называет «MIDIIN2 (…)», «MIDIIN3 (…)» — их берём последними.
 function midiPickInput(){
-  const ins = [...MIDI.access.inputs.values()].filter(i => i.state !== 'disconnected');
+  djScan();                            // пульт DDJ-FLX4 — на своём входе, рядом с основным
+  const ins = [...MIDI.access.inputs.values()].filter(i => i.state !== 'disconnected' && !djPort(i));
   const aux = i => /^midiin\d/i.test(i.name);
   const inp = ins.find(i => i.id === MIDI.wantId)
            || ins.find(i => midiProfileOf(i.name) && !aux(i))
@@ -6205,7 +6217,8 @@ function midiPickInput(){
   MIDI.input = inp; MIDI.ok = !!inp;
   midiUseProfile((inp && midiProfileOf(inp.name)) || MIDI_PROFILES[0]);
   if (inp){ inp.onmidimessage = midiMessage; MIDI.status = inp.name; }
-  else MIDI.status = 'контроллер не найден — подключите MC1 или MPK49';
+  else MIDI.status = DJ.input ? 'других контроллеров нет' : 'контроллер не найден — подключите MC1 или MPK49';
+  MIDI.quiet = !inp && !!DJ.input;     // пульт на месте — это не ошибка
   midiShow();
 }
 
@@ -6251,32 +6264,34 @@ function midiMessage(e){
   midiShowSoon();
 }
 
-function midiApply(key, x){
-  const k = midiBinds()[key];
+// organ — сам физический орган: у пульта он один на оба слоя, и где стоит
+// ручка, подхват должен знать при любом слое.
+function midiApply(key, x, D = MIDI, organ = key){
+  const k = midiBinds(D)[key];
   if (!k) return;
   const [, , min, max, step] = SPEC_ITEM[k];
   let v = min + (max - min)*x;
   if (step >= 1) v = Math.round(v/step)*step;
   // Параметр наш, пока в нём то, что поставили мы. Иначе его тронули
   // снаружи — и ручка снова должна пройти через его значение.
-  if (MIDI.pickup && MIDI.setBy[k] !== CFG[k]){
-    const cx = (CFG[k] - min)/(max - min), prev = MIDI.lastX[key];
-    MIDI.lastX[key] = x;
+  if (MIDI.pickup && D.setBy[k] !== CFG[k]){
+    const cx = (CFG[k] - min)/(max - min), prev = D.lastX[organ];
+    D.lastX[organ] = x;
     const crossed = Math.abs(x - cx) < 0.02 || (prev != null && (prev - cx)*(x - cx) <= 0);
-    if (!crossed){ MIDI.wait[k] = x < cx ? '↑' : '↓'; return; }
+    if (!crossed){ D.wait[k] = x < cx ? '↑' : '↓'; return; }
   }
-  delete MIDI.wait[k];
-  MIDI.lastX[key] = x;
+  delete D.wait[k];
+  D.lastX[organ] = x;
   setCtl(k, v);
-  MIDI.setBy[k] = CFG[k];
+  D.setBy[k] = CFG[k];
   midiPersist();
 }
 
-function midiBind(key, k){
-  const b = midiBinds();
+function midiBind(key, k, D = MIDI){
+  const b = midiBinds(D);
   for (const q in b) if (b[q] === k) delete b[q];     // у параметра один орган
   b[key] = k;
-  delete MIDI.setBy[k]; delete MIDI.lastX[key];
+  delete D.setBy[k]; delete D.lastX[key];
   MIDI.learnKey = null;                               // обучение не выключаем: вяжем подряд
   if (inputs[k]) flash(inputs[k].row);
   midiSave();
@@ -6295,11 +6310,15 @@ function midiPersist(){ if (!midiPT) midiPT = setTimeout(() => { midiPT = 0; per
 function midiShowSoon(){ if (!midiST) midiST = setTimeout(() => { midiST = 0; midiShow(); }, 60); }
 
 function midiMarks(){
-  const b = midiBinds(), by = {};
-  for (const key in b) by[b[key]] = midiName(key);
+  const by = {};
+  // У параметра бывает по органу на контроллер: основной и пульт — через пробел.
+  const mark = (D, b) => { for (const key in b)
+    by[b[key]] = (by[b[key]] ? by[b[key]] + ' ' : '') + midiName(key, D) + (D.wait[b[key]] || ''); };
+  mark(MIDI, midiBinds());
+  if (DJ.input) mark(DJ, midiBinds(DJ));
   for (const k in inputs){
     const c = inputs[k];
-    if (by[k]) c.labelEl.dataset.midi = by[k] + (MIDI.wait[k] || '');
+    if (by[k]) c.labelEl.dataset.midi = by[k];
     else delete c.labelEl.dataset.midi;
     c.row.classList.toggle('learning', MIDI.learn && MIDI.learnKey === k);
   }
@@ -6310,10 +6329,11 @@ function midiShow(){
   const u = MIDI.ui;
   if (!u) return;
   u.st.textContent = MIDI.status;
-  u.st.className = 'midi-st' + (MIDI.ok ? ' on' : ' bad');
+  u.st.className = 'midi-st' + (MIDI.ok ? ' on' : MIDI.quiet ? '' : ' bad');
   // Список входов перестраиваем, только если он поменялся: иначе открытый
-  // выпадающий список закрывался бы на каждом сообщении.
-  const ins = MIDI.access ? [...MIDI.access.inputs.values()] : [];
+  // выпадающий список закрывался бы на каждом сообщении. Пульта в нём нет —
+  // он слушается всегда, отдельно.
+  const ins = MIDI.access ? [...MIDI.access.inputs.values()].filter(i => !djPort(i)) : [];
   const sig = ins.map(i => i.id + i.state).join('|');
   if (sig !== MIDI.selSig){ MIDI.selSig = sig; u.sel.replaceChildren(...ins.map(i => new Option(i.name, i.id))); }
   if (MIDI.input) u.sel.value = MIDI.input.id;
@@ -6334,6 +6354,7 @@ function midiShow(){
     row.append(n, t, x); return row;
   }));
   u.mon.textContent = MIDI.last || 'сообщений пока не было';
+  djShow();
 }
 
 function buildMidiPanel(rows){
@@ -6367,7 +6388,853 @@ function buildMidiPanel(rows){
     if (e.type === 'pointerdown'){ MIDI.learnKey = k; midiShow(); }
   };
   for (const t of ['pointerdown', 'mousedown', 'click']) pBody.addEventListener(t, pick, true);
+  buildDjPanel(rows);
   midiShow();
+}
+
+/* ==== ddj-core:start ======================================================
+   Pioneer DDJ-FLX4: байты → события, по официальному «List of MIDI messages»
+   (Ver 1.0). Ядро чистое — ни DOM, ни картинки: tests/ddj.mjs гоняет его в
+   node по всей таблице Pioneer из tests/ddj-flx4.txt.
+
+   Деки — каналы 1 и 2. SHIFT у кнопки меняет саму ноту, у ручек и фейдеров —
+   ничего: второй слой ручек пульт не шлёт, его держим сами. Пэды — на своих
+   каналах: 0x97 дека 1, 0x98 она же с SHIFT, 0x99 и 0x9A — дека 2; нота —
+   режим·16 + номер пэда. Режимов восемь, переключает их сам пульт, кнопками
+   режимов. Ручки и фейдеры — 14 бит: старший байт на CC n, следом младший на
+   CC n+32. Джог шлёт приращение вокруг 0x40, BROWSE — в дополнительном коде.
+   Отпущенная кнопка — та же нота со скоростью 0; BEAT SYNC шлёт, только когда
+   палец отпускают, а долгое нажатие у него — отдельная нота. */
+const DDJ_MAX = 16383;
+// Ручки и фейдеры: статус → CC старшего байта → орган.
+const DDJ_ABS = {
+  0xB0: { 0x00:'tempo1', 0x04:'trim1', 0x07:'hi1', 0x0B:'mid1', 0x0F:'low1', 0x13:'ch1' },
+  0xB1: { 0x00:'tempo2', 0x04:'trim2', 0x07:'hi2', 0x0B:'mid2', 0x0F:'low2', 0x13:'ch2' },
+  0xB4: { 0x02:'depth' },
+  0xB6: { 0x05:'mic', 0x08:'master', 0x0C:'phmix', 0x0D:'phlvl', 0x17:'cfx1', 0x18:'cfx2', 0x1F:'xf' },
+};
+// Кнопки: нота → [кнопка, с SHIFT]. Деки — каналы 1–2, Beat FX — 5–6, микшер — 7.
+const DDJ_DECK = { 0x0B:['play',0], 0x0E:['play',1], 0x0C:['cue',0], 0x48:['cue',1],
+  0x10:['in',0], 0x4C:['in',1], 0x11:['out',0], 0x4E:['out',1], 0x4D:['exit',0], 0x50:['exit',1],
+  0x51:['back',0], 0x3E:['back',1], 0x53:['fwd',0], 0x3D:['fwd',1],
+  0x58:['sync',0], 0x60:['sync',1], 0x54:['chcue',0], 0x68:['chcue',1] };
+const DDJ_FX  = { 0x63:['fxsel',0], 0x64:['fxsel',1], 0x4A:['beatl',0], 0x66:['beatl',1],
+  0x4B:['beatr',0], 0x6B:['beatr',1], 0x47:['fxon',0], 0x43:['fxon',1] };
+const DDJ_MIX = { 0x63:['mcue',0], 0x78:['mcue',1], 0x00:['scfx',0], 0x08:['scfx',1],
+  0x01:['sfade',0], 0x09:['sfade',1], 0x41:['push',0], 0x42:['push',1],
+  0x46:['load1',0], 0x68:['load1',1], 0x47:['load2',0], 0x7A:['load2',1], 0x6D:['mono',0] };
+// Кнопки режимов → режим пэдов: HOT CUE, PAD FX1, BEAT JUMP, SAMPLER и с SHIFT
+// KEYBOARD, PAD FX2, BEAT LOOP, KEY SHIFT. Номер режима — старшая тетрада ноты пэда.
+const DDJ_MODE = { 0x1B:0, 0x1E:1, 0x20:2, 0x22:3, 0x69:4, 0x6B:5, 0x6D:6, 0x6F:7 };
+// Физическая кнопка режима светится нотой своего режима: [без SHIFT, с SHIFT].
+const DDJ_MODE_LED = [[0x1B, 0x69], [0x1E, 0x6B], [0x20, 0x6D], [0x22, 0x6F]];
+
+function nfDdjDecoder(){
+  const msb = {}, lever = {};
+  return d => {
+    const st = d[0], a = d[1], b = d[2], hi = st & 0xF0, ch = st & 0x0F;
+    if (hi === 0xB0){
+      const tab = DDJ_ABS[st];
+      if (tab && tab[a]){ msb[st*128 + a] = b; return null; }            // ждём младший байт
+      if (tab && a >= 0x20 && tab[a - 0x20]){
+        const m = msb[st*128 + a - 0x20];
+        return m == null ? null : { t:'abs', id: tab[a - 0x20], v: m << 7 | b };
+      }
+      if (ch <= 1 && (a === 0x21 || a === 0x22 || a === 0x23 || a === 0x29))
+        return { t:'rel', id: a === 0x21 ? 'side' : 'jog', deck: ch, sh: a === 0x29 ? 1 : 0, v: b - 0x40 };
+      if (st === 0xB6 && (a === 0x40 || a === 0x64))
+        return { t:'rel', id:'browse', deck: -1, sh: a === 0x64 ? 1 : 0, v: b < 0x40 ? b : b - 0x80 };
+      return null;
+    }
+    if (hi !== 0x90 && hi !== 0x80) return null;
+    const on = hi === 0x90 && b > 0;
+    if (ch <= 1){
+      if (a === 0x3F) return { t:'shift', deck: ch, on };
+      if (a === 0x36 || a === 0x67) return { t:'touch', deck: ch, on };
+      if (DDJ_MODE[a] != null) return { t:'mode', deck: ch, mode: DDJ_MODE[a], on };
+      const k = DDJ_DECK[a];              // 0x5C долгий SYNC и 0x66/0x52 «старт фейдером» — мимо
+      return k ? { t:'btn', id: k[0], deck: ch, sh: k[1], on } : null;
+    }
+    if (ch >= 7 && ch <= 10)
+      return (a & 0x0F) > 7 ? null
+           : { t:'pad', deck: ch < 9 ? 0 : 1, sh: ch === 8 || ch === 10 ? 1 : 0, mode: a >> 4, pad: a & 0x0F, on };
+    if (ch === 4 || ch === 5){
+      // Рычаг FX CH SELECT шлёт положение пачкой нот: 94 10 — «1», 95 11 — «2»,
+      // обе — «1&2». Посреди пачки положения нет вовсе — это 0.
+      if (a >= 0x10 && a <= 0x15){
+        lever[ch*128 + a] = on;
+        const one = lever[4*128 + 0x10], two = lever[5*128 + 0x11];
+        return { t:'lever', pos: one && two ? 3 : one ? 1 : two ? 2 : 0 };
+      }
+      const k = DDJ_FX[a];
+      return k ? { t:'btn', id: k[0], deck: -1, sh: k[1], on } : null;
+    }
+    if (ch === 6){
+      const k = DDJ_MIX[a];
+      return k ? { t:'btn', id: k[0], deck: -1, sh: k[1], on } : null;
+    }
+    return null;
+  };
+}
+
+// 14 бит → 0..1. Фиксатор посередине (EQ, CFX, TEMPO) даёт ровно 8192, и это
+// ровно середина: параметр встаёт точно в исходное, а не на волосок мимо.
+const ddjUnit = v => v === 8192 ? 0.5 : v/DDJ_MAX;
+// Дребезг: шаг назад против прежнего хода не больше j — это ручка, не рука.
+function ddjSteady(j){
+  const raw = {}, dir = {};
+  return (id, v) => {
+    const p = raw[id];
+    if (p != null){
+      const dv = v - p, s = Math.sign(dv);
+      if (!dv) return false;
+      if (Math.abs(dv) <= j && dir[id] && s !== dir[id] && v !== 0 && v !== DDJ_MAX) return false;
+      dir[id] = s;
+    }
+    raw[id] = v;
+    return true;
+  };
+}
+// Индикатор канала: пять сегментов от зелёного к красному, 0..1 → значение CC.
+const DDJ_METER = [0, 0x26, 0x41, 0x57, 0x65, 0x77];
+const ddjMeter = x => DDJ_METER[Math.max(0, Math.min(5, Math.round(x*5)))];
+// Светодиод пэда — та же нота, что шлёт пэд: [статус, нота].
+const ddjPad = (deck, sh, mode, pad) => [0x97 + deck*2 + (sh ? 1 : 0), mode*16 + pad];
+/* ==== ddj-core:end ======================================================== */
+
+/* ── Пульт Pioneer DDJ-FLX4 ────────────────────────────────────────────────
+   Диджейский пульт слушается рядом с основным контроллером, а не вместо
+   него: MPK49 или MC1 остаются на своём входе, пульт — на своём, и картинку
+   правят оба сразу. Задействован каждый орган пульта, который шлёт MIDI.
+
+   Двадцать ручек и фейдеров идут через те же привязки, что у остальных
+   контроллеров, — с подхватом, обучением и именем органа у ползунка. С
+   зажатым SHIFT любой деки — второй слой, всего сорок параметров: вся
+   картинка, кроме технических настроек слуха. Канал 1 микшера — как картинка
+   слушает (EQ → реакция по полосам), канал 2 — какая она (форма сцены),
+   кроссфейдер — из цвета в дуотон. У EQ, CFX и TEMPO фиксатор в центре, и
+   центр приходится ровно на исходное значение параметра.
+
+   Остальное — действия. Левая дека ведёт время картинки, как диджей ведёт
+   трек: джог скретчит, касание держит, лупы зацикливают, CUE возвращает к
+   метке. Правая — цвет и пространство. Пэды — восемь банков по режимам
+   пульта. Кнопки и пэды светятся тем, что за ними сейчас; если параллельно
+   открыт rekordbox, подсветку лучше выключить — будут спорить.
+
+   SysEx не нужен: запрос положений, которым rekordbox будит пульт, у этой
+   прошивки возвращает только рычаг FX CH SELECT, а ручки молчат, пока их не
+   тронешь. Подхват это и закрывает. */
+const DDJ_SHORT = { tempo1:'TMP1', trim1:'TRM1', hi1:'HI1', mid1:'MID1', low1:'LOW1', cfx1:'CFX1', ch1:'CH1',
+                    tempo2:'TMP2', trim2:'TRM2', hi2:'HI2', mid2:'MID2', low2:'LOW2', cfx2:'CFX2', ch2:'CH2',
+                    xf:'XF', depth:'FX', master:'MST', phmix:'PHM', phlvl:'PHL', mic:'MIC' };
+const DDJ_LONG  = { tempo1:'TEMPO 1', trim1:'TRIM 1', hi1:'EQ HI 1', mid1:'EQ MID 1', low1:'EQ LOW 1',
+                    cfx1:'CFX 1', ch1:'фейдер 1', tempo2:'TEMPO 2', trim2:'TRIM 2', hi2:'EQ HI 2',
+                    mid2:'EQ MID 2', low2:'EQ LOW 2', cfx2:'CFX 2', ch2:'фейдер 2', xf:'кроссфейдер',
+                    depth:'BEAT FX LEVEL/DEPTH', master:'MASTER LEVEL', phmix:'HEADPHONES MIX',
+                    phlvl:'HEADPHONES LEVEL', mic:'MIC LEVEL' };
+// Ключ органа с SHIFT — тот же с «^».
+const DDJ = { id:'flx4', name:'Pioneer DDJ-FLX4', match:/ddj-?flx4/i, ctls:{}, binds:{
+  tempo1:'speed',    'tempo1^':'fbRot',    tempo2:'fbZoom',     'tempo2^':'fbSwirl',
+  trim1:'dEnergy',   'trim1^':'bloomThr',  trim2:'contrast',    'trim2^':'struct',
+  hi1:'dHigh',       'hi1^':'chroma',      hi2:'complexity',    'hi2^':'fold',
+  mid1:'dMid',       'mid1^':'grain',      mid2:'shape',        'mid2^':'stretch',
+  low1:'dBass',      'low1^':'vignette',   low2:'density',      'low2^':'nearclip',
+  cfx1:'warp',       'cfx1^':'gradShift',  cfx2:'twist',        'cfx2^':'symAngle',
+  ch1:'bloom',       'ch1^':'defocus',     ch2:'fill',          'ch2^':'segments',
+  xf:'gradMap',      'xf^':'punch',        depth:'persist',     'depth^':'xerox',
+  master:'exposure', 'master^':'bloomRad', phmix:'hue',         'phmix^':'gradDrift',
+  phlvl:'sat',       'phlvl^':'mesh',      mic:'kickThr',       'mic^':'defRad' } };
+for (const id in DDJ_SHORT){ DDJ.ctls[id] = DDJ_SHORT[id]; DDJ.ctls[id + '^'] = '⇧' + DDJ_SHORT[id]; }
+// В общем списке профилей — ради хранения: банки пульта пишутся и грузятся
+// вместе с остальными. Основной вход пульт не выбирает никогда, см. djPort.
+MIDI_PROFILES.push(DDJ);
+
+const LS_DJ = 'noisefield.ddj';
+const DJ = {
+  prof: DDJ, input: null, out: null, last: '', ui: null,
+  get banks(){ return djStore().banks; }, get bank(){ return djStore().bank; },
+  setBy: {}, lastX: {}, wait: {},          // подхват — как у основного входа
+  shift: [false, false], touch: [false, false], mode: [0, 0], down: {},
+  active: {}, latched: {}, eat: {}, held: {}, rolls: {},
+  looks: [], leds: true, led: {}, ledAt: 0, kickAt: 0, seg: 6,
+  auto: false, autoBars: 0, dropReq: false, leverT: 0,
+  // Время картинки: src — непрерывное время под руками, out — что видит сцена.
+  tm: { out: null, src: 0, rate: 0.8, scr: 0, freeze: false, pad: false, kick: false,
+        loop: null, loopIn: null, cue: null, mode: 0 },
+};
+const djStore = () => MIDI.store[DDJ.id] ||
+  (MIDI.store[DDJ.id] = { banks: [{ name: 'основной', binds: { ...DDJ.binds } }], bank: 0 });
+let djDecode = nfDdjDecoder(), djSteady = ddjSteady(24);
+try {
+  const s = JSON.parse(localStorage.getItem(LS_DJ) || 'null');
+  if (s){ DJ.leds = s.leds !== false; if (Array.isArray(s.looks)) DJ.looks = s.looks.slice(0, 16); }
+} catch(e){}
+function djSave(){ try{ localStorage.setItem(LS_DJ, JSON.stringify({ leds: DJ.leds, looks: DJ.looks })); }catch(e){} }
+
+// Удар слышит время картинки (ход по ударам) и CUE правой деки (мигает на ударах).
+KICK_HOOKS.push(() => { DJ.tm.kick = true; DJ.kickAt = performance.now(); });
+
+const djPort = p => DDJ.match.test(p.name || '');
+// Пульт ищется при каждой перемене портов, как основной вход.
+function djScan(){
+  if (!MIDI.access) return;
+  const pick = m => { const ps = [...m.values()].filter(p => p.state !== 'disconnected' && djPort(p));
+                      return ps.find(p => !/^midi(in|out)\d/i.test(p.name)) || ps[0] || null; };
+  const inp = pick(MIDI.access.inputs), out = pick(MIDI.access.outputs);
+  if (inp !== DJ.input){
+    if (DJ.input) DJ.input.onmidimessage = null;
+    // Гасим, что зажигали: воткнутый заново пульт включается тёмным, и
+    // подсветку надо рисовать с нуля, а не по памяти.
+    djLedsOff();
+    djReset();
+    DJ.input = inp;
+    if (inp) inp.onmidimessage = djMessage;
+  }
+  if (out !== DJ.out){ djLedsOff(); DJ.out = out; }
+}
+// Выдернули пульт — всё, что он держал, отпускается: удержания, пауза, лупы.
+function djReset(){
+  for (const id in DJ.active) djHold(id, null, false);
+  Object.assign(DJ.tm, { freeze: false, pad: false, scr: 0, loop: null, loopIn: null, mode: 0 });
+  DJ.rolls = {}; DJ.down = {}; DJ.eat = {};
+  DJ.shift = [false, false]; DJ.touch = [false, false]; DJ.mode = [0, 0];
+  DJ.setBy = {}; DJ.lastX = {}; DJ.wait = {}; DJ.last = '';
+  djDecode = nfDdjDecoder(); djSteady = ddjSteady(24);
+}
+
+function djMessage(e){
+  const ev = djDecode(e.data);
+  if (!ev) return;
+  if (ev.t === 'abs') djAbs(ev.id, ev.v);
+  else if (ev.t === 'rel') djRel(ev);
+  else if (ev.t === 'btn') djButton(ev);
+  else if (ev.t === 'pad') djPad(ev);
+  else if (ev.t === 'shift') DJ.shift[ev.deck] = ev.on;
+  else if (ev.t === 'touch') DJ.touch[ev.deck] = ev.on;
+  else if (ev.t === 'mode'){ if (ev.on) djMode(ev.deck, ev.mode); }
+  else if (ev.t === 'lever'){
+    // Пачку дожидаемся целиком: посередине рычаг бывает «нигде».
+    clearTimeout(DJ.leverT);
+    if (ev.pos) DJ.leverT = setTimeout(() => djLever(ev.pos), 30);
+  }
+  midiShowSoon();
+}
+
+// Ручки и фейдеры — в общие привязки. Второй слой — с зажатым SHIFT любой деки.
+function djAbs(id, v){
+  if (!djSteady(id, v)) return;
+  const x = ddjUnit(v), sh = DJ.shift[0] || DJ.shift[1];
+  const key = sh ? id + '^' : id, b = midiBinds(DJ);
+  // Орган ушёл с места, где его оставил другой слой: параметр того слоя
+  // теперь подхватывается заново, иначе по возврату он прыгнул бы к ручке.
+  const other = b[sh ? id : id + '^'];
+  if (other && other !== b[key]) delete DJ.setBy[other];
+  DJ.last = midiName(key, DJ) + ' ' + Math.round(x*100) + '%' + (b[key] ? ' → ' + djLabel(b[key]) : '');
+  if (MIDI.learn && MIDI.learnKey) midiBind(key, MIDI.learnKey, DJ);
+  else midiApply(key, x, DJ, id);
+}
+const djLabel = k => inputs[k] ? inputs[k].labelEl.textContent : k;
+
+// Относительный сдвиг параметра; у тона и поворота калейдоскопа — по кругу.
+function djNudge(k, dv, wrap){
+  const [, , min, max, step] = SPEC_ITEM[k], span = max - min;
+  let v = CFG[k] + dv;
+  v = wrap ? min + (((v - min) % span) + span) % span : Math.max(min, Math.min(max, v));
+  if (step >= 1) v = Math.round(v);
+  setCtl(k, v); midiPersist();
+}
+function djScale(k, f){
+  const [, label, min, max, step] = SPEC_ITEM[k];
+  setCtl(k, Math.max(min, Math.min(max, CFG[k]*f))); midiPersist();
+  djToast(label + ' ' + fmt(CFG[k], step));
+}
+
+// Джог — около 720 делений на оборот. Левый скретчит время: оборот — три
+// единицы T, это пара секунд обычного хода; бок — подтяжка, SHIFT — быстро.
+// Правый крутит тон по кругу, бок — вихрь, SHIFT — поворот калейдоскопа.
+const JOG = 1/720;
+function djRel(ev){
+  if (ev.id === 'browse'){
+    if (ev.sh) djFactoryStep(Math.sign(ev.v));
+    else djScene(CFG.scene + ev.v);
+    return;
+  }
+  if (ev.deck === 0) DJ.tm.scr += ev.v*JOG*(ev.id === 'side' ? 0.5 : ev.sh ? 24 : 3);
+  else if (ev.id === 'side') djNudge('twist', ev.v*JOG, false);
+  else djNudge(ev.sh ? 'symAngle' : 'hue', ev.v*JOG, true);
+}
+
+/* Кнопки. Левая дека — время картинки, правая — цвет и пространство,
+   середина — микшер, браузер и Beat FX. С SHIFT пульт шлёт другую ноту, у
+   кнопки это второе действие. Подписи уходят в легенду панели. */
+const DJ_LOOK = ['scene', 'palette', 'sym', 'fb', 'post', 'grad'];
+const DJ_ACT = {
+  'd0:play':  ['звук: пуск и пауза', () => {
+                 if (LIVE.on) return djToast('живой вход на паузу не ставится');
+                 if (!audioBuf) return djToast('трек не загружен');
+                 togglePlayback(); }],
+  'd0:play^': ['трек с начала', () => { if (audioBuf) seekTo(0); }],
+  'd0:cue':   ['к метке времени; метки нет — ставит', () => djCue(false)],
+  'd0:cue^':  ['поставить метку времени', () => djCue(true)],
+  'd0:in':    ['луп: начало', djLoopIn],
+  'd0:out':   ['луп: конец — и по кругу', djLoopOut],
+  'd0:exit':  ['луп на 4 доли, в лупе — выход', () => DJ.tm.loop ? djLoopExit() : djLoopStart(4)],
+  'd0:in^':   ['луп на долю', () => djLoopStart(1)],
+  'd0:out^':  ['луп на 2 доли', () => djLoopStart(2)],
+  'd0:exit^': ['луп на 8 долей', () => djLoopStart(8)],
+  'd0:back':  ['луп вдвое короче, без лупа — на долю назад', () => djLoopScale(0.5) || djJump(-1)],
+  'd0:fwd':   ['луп вдвое длиннее, без лупа — на долю вперёд', () => djLoopScale(2) || djJump(1)],
+  'd0:back^': ['на такт назад', () => djJump(-4)],
+  'd0:fwd^':  ['на такт вперёд', () => djJump(4)],
+  'd0:sync':  ['образ — к точке отсчёта', () => djRestore(DJ_LOOK)],
+  'd0:sync^': ['реакция — к точке отсчёта', () => djRestore(['react'])],
+  'd0:chcue': ['метры', () => reveal(() => {
+                 const hide = !hud.classList.contains('gone');
+                 hud.classList.toggle('gone', hide); keys.classList.toggle('gone', hide); }, [hud])],
+  'd0:chcue^':['звуковой тракт', () => reveal(toggleDiag, [diag])],
+  'd1:play':  ['стоп-кадр', () => { DJ.tm.freeze = !DJ.tm.freeze;
+                 djToast(DJ.tm.freeze ? 'стоп-кадр' : 'картинка идёт'); }],
+  'd1:play^': ['снять стоп-кадр и лупы', () => {
+                 Object.assign(DJ.tm, { freeze: false, loop: null, loopIn: null }); djToast('время идёт'); }],
+  'd1:cue':   ['удар', () => djKick(1.0, 0)],
+  'd1:cue^':  ['дроп', djDrop],
+  'd1:in':    ['сегментов меньше', () => djNudge('segments', -1)],
+  'd1:out':   ['сегментов больше', () => djNudge('segments', 1)],
+  'd1:exit':  ['калейдоскоп вкл/выкл', djKaleido],
+  'd1:in^':   ['вихрь влево', () => djNudge('twist', -0.25)],
+  'd1:out^':  ['вихрь вправо', () => djNudge('twist', 0.25)],
+  'd1:exit^': ['вихрь в ноль', () => { setCtl('twist', 0); midiPersist(); }],
+  'd1:back':  ['калейдоскоп на полсектора назад', () => djSector(-1)],
+  'd1:fwd':   ['калейдоскоп на полсектора вперёд', () => djSector(1)],
+  'd1:back^': ['тон на полутон вниз', () => djNudge('hue', -1/12, true)],
+  'd1:fwd^':  ['тон на полутон вверх', () => djNudge('hue', 1/12, true)],
+  'd1:sync':  ['рандом', () => { randomize(); djToast('рандом'); }],
+  'd1:sync^': ['палитра сцены', () => { applyScenePalette(); persist(); }],
+  'd1:chcue': ['транспорт', () => reveal(() => {
+                 transport.classList.toggle('gone');
+                 document.body.classList.toggle('playing', !transport.classList.contains('gone') && !!audioBuf);
+               }, [transport])],
+  'd1:chcue^':['профайлер', () => toggleProf()],
+  'push':     ['панель', () => reveal(() => panel.classList.toggle('gone'), [panel])],
+  'push^':    ['MIDI-обучение', () => { setClean(false); midiLearn(!MIDI.learn); }],
+  'load1':    ['свой пресет назад', () => djUserStep(-1)],
+  'load2':    ['свой пресет вперёд', () => djUserStep(1)],
+  'load1^':   ['записать как свой пресет', djSaveUser],
+  'load2^':   ['записать в свободный образ', djSaveLook],
+  'mcue':     ['чистый экран', () => setClean(!clean)],
+  'mcue^':    ['кадр в png', () => { wantShot = true; }],
+  'scfx':     ['случайная палитра', djRandPalette],
+  'scfx^':    ['случайный пресет', () => djFactory(Math.floor(Math.random()*FACTORY.length))],
+  'sfade':    ['автопилот: пресеты сцены на дропах', () => {
+                 DJ.auto = !DJ.auto; DJ.autoBars = 0; djToast('автопилот ' + (DJ.auto ? 'вкл' : 'выкл')); }],
+  'sfade^':   ['запись видео', () => toggleRecording()],
+  'mono':     ['MONO — монохром', on => djHold('mono', { sat: 0 }, on)],
+  'fxsel':    ['палитра вперёд', () => djPalette(CFG.palette + 1)],
+  'fxsel^':   ['палитра назад', () => djPalette(CFG.palette - 1)],
+  'beatl':    ['удар короче', () => djScale('pulseDec', 0.8)],
+  'beatr':    ['удар длиннее', () => djScale('pulseDec', 1.25)],
+  'beatl^':   ['спад короче', () => djScale('release', 0.8)],
+  'beatr^':   ['спад длиннее', () => djScale('release', 1.25)],
+  'fxon':     ['шлейф выкл/вкл', () => djHold('echo', { persist: 0 }, !DJ.active.echo)],
+  'fxon^':    ['ксерокс выкл/вкл', () => djHold('xer', { xerox: 0 }, !DJ.active.xer)],
+};
+const DJ_DECK_BTNS = [['play','PLAY'], ['cue','CUE'], ['sync','BEAT SYNC'], ['in','IN'], ['out','OUT'],
+                      ['exit','4 BEAT/EXIT'], ['back','CUE/LOOP CALL ◁'], ['fwd','CUE/LOOP CALL ▷'], ['chcue','CUE канала']];
+const DJ_MIX_BTNS  = [['push','BROWSE, нажатие'], ['load1','LOAD 1'], ['load2','LOAD 2'], ['mcue','MASTER CUE'],
+                      ['scfx','SMART CFX'], ['sfade','SMART FADER'], ['fxsel','FX SELECT'], ['beatl','BEAT ◁'],
+                      ['beatr','BEAT ▷'], ['fxon','FX ON/OFF'], ['mono','MONO/STEREO (сзади)']];
+const djBtnName = ev => {
+  const n = (ev.deck >= 0 ? DJ_DECK_BTNS : DJ_MIX_BTNS).find(b => b[0] === ev.id);
+  return (ev.sh ? '⇧' : '') + (n ? n[1] : ev.id) + (ev.deck >= 0 ? ' ' + (ev.deck + 1) : '');
+};
+
+function djButton(ev){
+  const a = DJ_ACT[(ev.deck >= 0 ? 'd' + ev.deck + ':' : '') + ev.id + (ev.sh ? '^' : '')];
+  if (!a) return;
+  if (ev.id === 'mono') a[1](ev.on);          // переключатель: важны оба положения
+  else if (ev.on) a[1]();
+  else return;
+  DJ.last = djBtnName(ev) + (ev.id === 'mono' ? (ev.on ? ' MONO' : ' STEREO') : '') + ' → ' + a[0];
+}
+
+/* Удержание: пока держат, параметр стоит на значении эффекта, отпустили —
+   вернулся, где был. На одном параметре удержания складываются стопкой:
+   правит последнее нажатое, отпускание снимает только своё. Если параметр,
+   пока его держали, сдвинули ручкой, — ручка важнее, возврата нет. */
+function djHold(id, vals, on){
+  if (!!DJ.active[id] === on) return;
+  if (on) DJ.active[id] = vals;
+  else { vals = DJ.active[id]; delete DJ.active[id]; delete DJ.latched[id]; }
+  for (const k in vals){
+    let h = DJ.held[k];
+    if (!h) h = DJ.held[k] = { base: CFG[k], v: CFG[k], list: [] };
+    else if (CFG[k] !== h.v) h.base = CFG[k];
+    h.list = h.list.filter(e => e[0] !== id);
+    if (on) h.list.push([id, vals[k]]);
+    const top = h.list[h.list.length - 1];
+    h.v = top ? top[1] : h.base;
+    setCtl(k, h.v);
+    if (!top) delete DJ.held[k];
+  }
+  midiPersist();
+}
+
+const djBeatSec = () => MUS.bpm > 30 ? 60/MUS.bpm : 0.5;
+// Сколько долей прошло — для дроби по сетке. Без музыки — ровные 120 bpm.
+const djBeats = () => MUS.bpm > 30 ? MUS.beatN + MUS.beat : performance.now()/500;
+const djBeatsText = n => n < 1 ? '1/' + Math.round(1/n) + ' доли'
+  : Number.isInteger(n) ? n + (n === 1 ? ' долю' : n < 5 ? ' доли' : ' долей') : '≈' + n.toFixed(1) + ' доли';
+
+function djCue(set){
+  const S = DJ.tm;
+  if (set || S.cue == null){ S.cue = S.src; return djToast('метка времени поставлена'); }
+  S.loop = null; S.scr += S.cue - S.src;
+}
+// Луп встаёт на сетку, как с квантайзом: начало — на последней доле или её дроби.
+function djLoopStart(len){
+  const S = DJ.tm, q = Math.min(1, len);
+  const tau = MUS.bpm > 30 ? (((MUS.beat % q) + q) % q)*djBeatSec() : 0;
+  S.loop = { len, tau, phi: tau*S.rate, T0: S.src - tau*S.rate };
+  S.loopIn = null;
+  djToast('луп на ' + djBeatsText(len));
+}
+function djLoopExit(){ DJ.tm.loop = null; djToast('луп снят'); }
+function djLoopIn(){
+  const S = DJ.tm;
+  S.loopIn = { T: S.src, at: performance.now()/1000 }; S.loop = null;
+  djToast('луп: начало');
+}
+function djLoopOut(){
+  const S = DJ.tm;
+  if (!S.loopIn) return djToast('сначала IN');
+  const len = (performance.now()/1000 - S.loopIn.at)/djBeatSec();
+  if (len < 1/16) return;
+  S.loop = { len, tau: 0, phi: 0, T0: S.loopIn.T }; S.loopIn = null;
+  djToast('луп на ' + djBeatsText(len));
+}
+function djLoopScale(f){
+  const L = DJ.tm.loop;
+  if (!L) return false;
+  L.len = Math.min(64, Math.max(1/8, L.len*f));
+  djToast('луп на ' + djBeatsText(L.len));
+  return true;
+}
+function djJump(beats){ const S = DJ.tm; S.loop = null; S.scr += beats*djBeatSec()*S.rate; }
+
+function djKick(s, w){ fire(0, kickWeight(s, punchLaw().gK)); if (w) warpKick(w); }
+// Дроп руками. Живым часам — через их собственный дроп: он заодно ставит
+// сильную долю туда, где нажали. У файла с сеткой дропы свои — наш кладём
+// поверх, в MUS, на ближайшем кадре (djFrame).
+function djDrop(){
+  clock()._drop(clock().t);
+  DJ.dropReq = true;
+  djKick(1.2, 1);
+  djToast('дроп');
+}
+function djKaleido(){
+  if (CFG.segments >= 1){ DJ.seg = CFG.segments; setCtl('segments', 0); }
+  else setCtl('segments', DJ.seg || 6);
+  midiPersist();
+  djToast(CFG.segments ? 'калейдоскоп: ' + CFG.segments : 'калейдоскоп выкл');
+}
+const djSector = dir => djNudge('symAngle', dir*0.5/Math.max(2, CFG.segments), true);
+function djRestore(ids){
+  for (const g of SPEC) if (ids.includes(g.id))
+    for (const it of g.items) if (Array.isArray(it) && inputs[it[0]]) setCtl(it[0], inputs[it[0]].def);
+  persist();
+  djToast(ids.length > 1 ? 'образ — к точке отсчёта' : 'реакция — к точке отсчёта');
+}
+
+// Сцены, палитры, пресеты — теми же путями, что панель и клавиши.
+function djScene(i){
+  const n = SCENES.length;
+  i = ((i % n) + n) % n;
+  if (i === CFG.scene) return;
+  CFG.scene = i;
+  if (sceneSelect) sceneSelect.value = i;
+  simNeedsInit = true;
+  applyScenePalette(); applySceneLabels(); persist();
+  djToast('сцена: ' + SCENES[i].name);
+}
+function djPalette(i){
+  const n = PALETTES.length;
+  i = ((i % n) + n) % n;
+  CFG.palette = i;
+  if (paletteSelect) paletteSelect.value = i;
+  applyPalette(i); persist();
+  djToast('палитра: ' + PALETTES[i].name);
+}
+function djRandPalette(){
+  let i;
+  do i = Math.floor(Math.random()*PALETTES.length); while (i === CFG.palette);
+  djPalette(i);
+}
+function djFactory(i){
+  applyPreset({ ...FACTORY[i], factory: true });
+  rebuildPresetList('f' + i);
+  djToast('пресет: ' + FACTORY[i].name);
+}
+const djScenePresets = () => FACTORY.map((p, i) => [p, i]).filter(([p]) => (p.scene || 0) === CFG.scene).map(([, i]) => i);
+// Встроенные пресеты подряд — в том же порядке, что в списке панели, по сценам.
+const DJ_FORDER = SCENES.flatMap((sc, si) => FACTORY.map((p, i) => [p, i]).filter(([p]) => (p.scene || 0) === si).map(([, i]) => i));
+function djFactoryStep(dir){
+  const v = presetSelect ? presetSelect.value : '', n = DJ_FORDER.length;
+  const at = v[0] === 'f' ? DJ_FORDER.indexOf(+v.slice(1)) : -1;
+  const pos = at >= 0 ? at + dir : Math.max(0, DJ_FORDER.findIndex(i => (FACTORY[i].scene || 0) === CFG.scene));
+  djFactory(DJ_FORDER[((pos % n) + n) % n]);
+}
+function djUserApply(i, lamp){
+  const list = userPresets();
+  if (!list[i]) return;
+  applyPreset(list[i]);
+  rebuildPresetList('u' + i);
+  if (lamp != null && DJ.leds && DJ.out) try{ DJ.out.send([0x9F, lamp, 0x7F]); }catch(e){}   // «трек загружен»
+  djToast('свой пресет: ' + list[i].name);
+}
+function djUserStep(dir){
+  const n = userPresets().length;
+  if (!n) return djToast('своих пресетов нет — ⇧LOAD 1 запишет текущий');
+  const v = presetSelect ? presetSelect.value : '';
+  const cur = v[0] === 'u' ? +v.slice(1) : (dir > 0 ? -1 : n);
+  djUserApply((((cur + dir) % n) + n) % n, dir > 0 ? 1 : 0);
+}
+function djSaveUser(){
+  const list = userPresets(), name = 'пульт ' + new Date().toLocaleTimeString('ru-RU');
+  list.push({ name, cfg: {...CFG}, slots: slots.slice() });
+  writePresets(list);
+  rebuildPresetList('u' + (list.length - 1));
+  setRefs({...CFG});
+  djToast('записан пресет «' + name + '»');
+}
+// Образ — в первый пустой пэд HOT CUE: запоминать можно, не глядя на пэды.
+function djSaveLook(){
+  let i = 0;
+  while (i < 16 && DJ.looks[i]) i++;
+  if (i === 16) return djToast('все 16 образов заняты — ⇧ + пэд HOT CUE стирает');
+  DJ.looks[i] = { cfg: {...CFG}, slots: slots.slice() };
+  djSave();
+  djToast('образ ' + (i + 1) + ' записан');
+}
+
+/* Пэды — восемь банков по режимам пульта; у каждой деки свой набор. */
+const DJ_HOLDS = [
+  [ { n:'затемнение', v:{ exposure: .2 } },   { n:'вспышка', v:{ exposure: 2.6 } },
+    { n:'шлейф', v:{ persist: .93 } },        { n:'расфокус', v:{ defocus: .9 } },
+    { n:'аберрация', v:{ chroma: 2.2 } },     { n:'ксерокс', v:{ xerox: .75 } },
+    { n:'рабица', v:{ mesh: .7 } },           { n:'дуотон', v:{ gradMap: 1 } } ],
+  [ { n:'калейдоскоп 4', v:{ segments: 4 } }, { n:'калейдоскоп 8', v:{ segments: 8 } },
+    { n:'зеркало', v:{ segments: 1 } },       { n:'вихрь', v:{ twist: 1.6 } },
+    { n:'наплыв', v:{ persist: .9, fbZoom: 1.035 } }, { n:'вращение', v:{ persist: .9, fbRot: .02 } },
+    { n:'монохром', v:{ sat: 0 } },           { n:'стоп', v:{}, time: true } ],
+];
+const DJ_HITS  = [0.25, 0.4, 0.55, 0.7, 0.85, 1.0, 1.2, 1.5];
+const DJ_LOOPS = [1/4, 1/2, 1, 2, 4, 8, 16, 32];
+const DJ_ROLLS = [1/8, 1/4, 1/2, 1];
+const DJ_SATS  = [0, 0.6, 1.15, 1.8];
+// Полутон тона — двенадцатая часть круга, в пределах ползунка −0.5…+0.5.
+const djSemi = n => { const h = (n % 12)/12; return h > 0.5 ? h - 1 : h; };
+const DDJ_MODE_NAMES = ['HOT CUE', 'PAD FX1', 'BEAT JUMP', 'SAMPLER', 'KEYBOARD', 'PAD FX2', 'BEAT LOOP', 'KEY SHIFT'];
+const DJ_BANK = [
+  { n:['образы 1–8', 'образы 9–16'], d:'образы 1–8 | 9–16: пустой пэд записывает, полный вызывает · ⇧ стирает',
+    f(d, p, sh, on){
+      if (!on) return;
+      const i = d*8 + p, look = DJ.looks[i];
+      if (sh){ if (look){ DJ.looks[i] = null; djSave(); djToast('образ ' + (i + 1) + ' стёрт'); } return; }
+      if (!look){ DJ.looks[i] = { cfg: {...CFG}, slots: slots.slice() }; djSave(); return djToast('образ ' + (i + 1) + ' записан'); }
+      applyPreset({ cfg: {...look.cfg}, slots: look.slots });
+      rebuildPresetList('');
+      djToast('образ ' + (i + 1));
+    },
+    led: (d, p) => DJ.looks[d*8 + p] ? 0x7F : 0 },
+  { n:['удержания: свет', 'удержания: пространство'],
+    d:'удержания, пока держишь: ' + DJ_HOLDS[0].map(h => h.n).join(', ') + ' | ' + DJ_HOLDS[1].map(h => h.n).join(', ') + ' · ⇧ защёлка',
+    f(d, p, sh, on){
+      const h = DJ_HOLDS[d][p], id = 'h' + d + p;
+      const set = v => { if (h.time) DJ.tm.pad = v; djHold(id, h.v, v); };
+      if (sh){ if (on){ const v = !DJ.active[id]; set(v); if (v) DJ.latched[id] = true; } return; }
+      if (on){ if (DJ.latched[id]){ set(false); DJ.eat[id] = true; } else set(true); }
+      else if (DJ.eat[id]) delete DJ.eat[id];
+      else if (!DJ.latched[id]) set(false);
+    },
+    led: (d, p) => DJ.active['h' + d + p] ? 0x7F : 0x20 },
+  { n:['палитры 1–8', 'палитры 9–16'], d:'палитры 1–8 | 9–16 · ⇧ 17–24 | палитра сцены',
+    f(d, p, sh, on){
+      if (!on) return;
+      if (sh && d){ if (!p){ applyScenePalette(); persist(); djToast('палитра сцены'); } return; }
+      const i = (sh ? 16 : d*8) + p;
+      if (i < PALETTES.length) djPalette(i);
+    },
+    led(d, p, sh){
+      if (sh && d) return p ? 0 : 0x20;
+      const i = (sh ? 16 : d*8) + p;
+      return i >= PALETTES.length ? 0 : i === CFG.palette ? 0x7F : 0x20;
+    } },
+  { n:['удары', 'события сцен'], d:'удары по силе, восьмой с изломом | планы реактора 1–5, режиссёр, рой: буря/сбор, дроп',
+    f(d, p, sh, on){
+      if (!on) return;
+      if (!d) return djKick(DJ_HITS[p], p === 7 ? 1 : 0);
+      if (p === 7) return djDrop();
+      if (p === 6){
+        if (SCENES[CFG.scene] !== SWARM || !SWARM.S) return djToast('буря и сбор — в сцене «рой»');
+        if (SWARM.S.mode === 'рой') SWARM.setMode('сбор'); else SWARM.storm(1e9);
+        return;
+      }
+      if (SCENES[CFG.scene] !== REACTOR || !REACTOR.S) return djToast('планы камеры — в сцене «реактор»');
+      REACTOR.S.lock = p < 5 ? p : -1;
+      djToast(p < 5 ? 'камера: ' + RX_SHOTS[p].name : 'камера: режиссёр');
+    },
+    led(d, p){
+      if (DJ.down[d*8 + p]) return 0x7F;
+      const sc = SCENES[CFG.scene];
+      return !d || p === 7 || (p === 6 ? sc === SWARM : sc === REACTOR) ? 0x20 : 0;
+    } },
+  { n:['сцены 1–8', 'сцены 9–10'], d:'сцены 1–8 | 9–10',
+    f(d, p, sh, on){ if (on && d*8 + p < SCENES.length) djScene(d*8 + p); },
+    led(d, p){ const i = d*8 + p; return i >= SCENES.length ? 0 : i === CFG.scene ? 0x7F : 0x20; } },
+  { n:['пресеты сцены', 'свои пресеты'], d:'пресеты сцены | свои пресеты · ⇧ следующие восемь',
+    f(d, p, sh, on){
+      if (!on) return;
+      const i = p + (sh ? 8 : 0);
+      if (d){ if (i < userPresets().length) djUserApply(i); return; }
+      const list = djScenePresets();
+      if (i < list.length) djFactory(list[i]);
+    },
+    led(d, p, sh, ctx){
+      const i = p + (sh ? 8 : 0), v = presetSelect ? presetSelect.value : '';
+      if (d) return i >= ctx.nUser ? 0 : v === 'u' + i ? 0x7F : 0x20;
+      return i >= ctx.fList.length ? 0 : v === 'f' + ctx.fList[i] ? 0x7F : 0x20;
+    } },
+  { n:['лупы времени', 'дробь'], d:'лупы времени на 1/4…32 доли, повтор — выход | дробь ударов по сетке, пока держишь: 1/8…1 доля, 5–8 с изломом',
+    f(d, p, sh, on){
+      if (d){ if (on) DJ.rolls[p] = { div: DJ_ROLLS[p & 3], warp: p >= 4, n: null }; else delete DJ.rolls[p]; return; }
+      if (!on) return;
+      const L = DJ.tm.loop;
+      if (L && Math.abs(L.len - DJ_LOOPS[p]) < 1e-6) djLoopExit(); else djLoopStart(DJ_LOOPS[p]);
+    },
+    led(d, p){
+      if (d) return DJ.rolls[p] ? 0x7F : 0x20;
+      const L = DJ.tm.loop;
+      return L && Math.abs(L.len - DJ_LOOPS[p]) < 1e-6 ? 0x7F : 0x20;
+    } },
+  { n:['тон', 'тон и насыщенность'], d:'тон 0…+7 полутонов | +8…+11 и насыщенность 0 / 0.6 / 1.15 / 1.8',
+    f(d, p, sh, on){
+      if (!on) return;
+      if (d && p >= 4){ setCtl('sat', DJ_SATS[p - 4]); midiPersist(); return djToast('насыщенность ' + DJ_SATS[p - 4]); }
+      const n = d ? 8 + p : p;
+      setCtl('hue', djSemi(n)); midiPersist();
+      djToast(n ? 'тон +' + n + ' полутонов' : 'тон исходный');
+    },
+    led(d, p){
+      const on = d && p >= 4 ? Math.abs(CFG.sat - DJ_SATS[p - 4]) < 1e-3 : Math.abs(CFG.hue - djSemi(d ? 8 + p : p)) < 1e-3;
+      return on ? 0x7F : 0x20;
+    } },
+];
+const djBankName = d => DJ_BANK[DJ.mode[d]].n[d];
+
+function djPad(ev){
+  const { deck: d, mode: m, pad: p, sh, on } = ev;
+  if (DJ.mode[d] !== m) djMode(d, m);       // режим узнаём и по самому пэду: вдруг его выбрали до нас
+  DJ.down[d*8 + p] = on;
+  DJ_BANK[m].f(d, p, sh, on);
+  if (on) DJ.last = (sh ? '⇧' : '') + 'пэд ' + (p + 1) + ' деки ' + (d + 1) + ' · ' + djBankName(d);
+}
+// Пульт гасит пэды сам, когда меняют режим, — рисуем их заново.
+function djMode(d, m){
+  DJ.mode[d] = m;
+  for (const k in DJ.led){ const st = k >> 7; if (st === 0x97 + d*2 || st === 0x98 + d*2) delete DJ.led[k]; }
+  DJ.ledAt = 0;
+  DJ.last = 'дека ' + (d + 1) + ': ' + DDJ_MODE_NAMES[m] + ' — ' + djBankName(d);
+  djToast('пэды деки ' + (d + 1) + ': ' + djBankName(d));
+}
+// Рычаг FX CH SELECT — ход времени: 1 — рывками по долям, 2 — по ударам, 1&2 — плавно.
+function djLever(pos){
+  DJ.tm.mode = pos === 1 ? 1 : pos === 2 ? 2 : 0;
+  djToast('время ' + ['плавно', 'по долям', 'по ударам'][DJ.tm.mode]);
+  midiShowSoon();
+}
+
+// Автопилот: на каждом дропе (и раз в 32 такта без дропа) — следующий
+// встроенный пресет сцены; у сцены без своих пресетов — следующая палитра.
+function djAutoNext(){
+  DJ.autoBars = 0;
+  const list = djScenePresets(), v = presetSelect ? presetSelect.value : '';
+  if (list.length > 1){ const i = v[0] === 'f' ? list.indexOf(+v.slice(1)) : -1; djFactory(list[(i + 1) % list.length]); }
+  else djPalette(CFG.palette + 1);
+}
+
+// Кадр пульта — после музыкального времени, до сцен: дроп руками должен
+// попасть в MUS того же кадра, где его ждут знак, рой и реактор.
+function djFrame(){
+  if (!DJ.input) return;
+  if (DJ.dropReq){
+    DJ.dropReq = false;
+    if (MUS.src === 'сетка'){ musDropT = visualPos(); MUS.dropHit = true; MUS.drop = 1; MUS.section = 'дроп'; }
+  }
+  const b = djBeats();
+  for (const id in DJ.rolls){
+    const r = DJ.rolls[id], n = Math.floor(b/r.div);
+    if (n !== r.n){ r.n = n; djKick(r.warp ? 1.1 : 0.8, r.warp ? 0.8 : 0); }
+  }
+  if (DJ.auto){
+    if (MUS.barHit) DJ.autoBars++;
+    if (MUS.dropHit || DJ.autoBars >= 32) djAutoNext();
+  }
+  if (DJ.leds && DJ.out){
+    // Индикаторы каналов — каждый кадр: низ с ударом и общая энергия.
+    djLed(0xB0, 0x02, ddjMeter(Math.max(F.bass, F.pulse/1.6)));
+    djLed(0xB1, 0x02, ddjMeter(F.energy));
+    const now = performance.now();
+    if (now - DJ.ledAt > 80){ DJ.ledAt = now; djLeds(); }
+  }
+}
+
+/* Время картинки. frame() двигает T как обычно, а здесь поверх — пауза,
+   скретч, лупы и ход рывками. Без пульта T проходит насквозь. Всё, что
+   крутится от T, — поле, облака, фракталы, сигнал, эмблема — слушается
+   времени пульта; у роя, реактора и морфогена свои часы. */
+function djTime(T1, dt){
+  const S = DJ.tm;
+  if (S.out == null || !DJ.input){ S.out = S.src = T1; S.scr = 0; return T1; }
+  const inc = T1 - S.out;
+  if (dt > 0) S.rate = inc/dt;
+  const hold = S.freeze || S.pad || DJ.touch[0];
+  const flow = hold ? 0 : inc, scr = S.scr;
+  S.scr = 0;
+  const L = S.loop;
+  if (L){
+    if (!hold) L.tau += dt;
+    const per = L.len*djBeatSec();
+    if (L.tau >= per){ L.tau %= per; L.phi = L.tau*S.rate; }      // круг: назад к началу петли
+    else L.phi += flow;
+    L.phi += scr;
+    S.src = L.T0 + L.phi;
+  } else S.src += flow + scr;
+  if (!S.mode || scr || (S.mode === 1 && MUS.beatHit) || (S.mode === 2 && S.kick)) S.out = S.src;
+  S.kick = false;
+  return S.out;
+}
+const djTimeText = () => { const S = DJ.tm;
+  return ['плавно', 'по долям', 'по ударам'][S.mode] + (S.freeze || S.pad || DJ.touch[0] ? ' · стоп' : '') +
+         (S.loop ? ' · луп ' + djBeatsText(S.loop.len) : S.loopIn ? ' · луп открыт' : ''); };
+
+/* Подсветка. Светодиоды пульт зажигает той же нотой, что шлёт кнопка;
+   пишем только перемены, поэтому гонять её хоть каждый кадр дёшево. */
+function djLed(st, n, v){
+  const k = st*128 + n;
+  if (DJ.led[k] === v || !DJ.out) return;
+  DJ.led[k] = v;
+  try{ DJ.out.send([st, n, v]); }catch(e){}
+}
+function djLedsOff(){
+  if (DJ.out) for (const k in DJ.led) if (DJ.led[k]) try{ DJ.out.send([k >> 7, k & 127, 0]); }catch(e){}
+  DJ.led = {};
+}
+addEventListener('pagehide', djLedsOff);
+function djLeds(){
+  const S = DJ.tm, ON = 0x7F;
+  djLed(0x90, 0x0B, playing && !LIVE.on ? ON : 0);
+  djLed(0x90, 0x0C, S.cue != null ? ON : 0);
+  djLed(0x90, 0x10, S.loop || S.loopIn ? ON : 0);
+  djLed(0x90, 0x11, S.loop ? ON : 0);
+  djLed(0x90, 0x54, hud.classList.contains('gone') ? 0 : ON);
+  djLed(0x91, 0x0B, S.freeze ? 0 : ON);
+  djLed(0x91, 0x0C, performance.now() - DJ.kickAt < 90 ? ON : 0);
+  djLed(0x91, 0x10, CFG.segments >= 1 ? ON : 0);
+  djLed(0x91, 0x11, CFG.segments >= 2 ? ON : 0);
+  djLed(0x91, 0x54, transport.classList.contains('gone') ? 0 : ON);
+  djLed(0x96, 0x01, DJ.auto ? ON : 0);
+  // FX ON/OFF мигает от «нота вкл» и горит ровно от «нота выкл»: мигает, пока шлейф на экране.
+  djLed(0x94, 0x47, !DJ.active.echo && CFG.persist > 0.01 ? ON : 0);
+  // Списки пресетов нужны только банку пресетов: свои лежат в localStorage, и
+  // разбирать их десять раз в секунду впустую незачем.
+  const ctx = DJ.mode.includes(5) ? { nUser: userPresets().length, fList: djScenePresets() } : null;
+  for (const d of [0, 1]){
+    const m = DJ.mode[d], st = 0x90 + d;
+    DDJ_MODE_LED.forEach(([pl, sf], i) => {
+      if (m === i){ djLed(st, pl, ON); delete DJ.led[st*128 + sf]; }
+      else if (m === i + 4){ djLed(st, sf, ON); delete DJ.led[st*128 + pl]; }
+      else { djLed(st, pl, 0); djLed(st, sf, 0); }
+    });
+    for (let p = 0; p < 8; p++) for (const sh of [0, 1]){
+      const [ps, pn] = ddjPad(d, sh, m, p);
+      djLed(ps, pn, DJ_BANK[m].led(d, p, sh, ctx));
+    }
+  }
+}
+
+// Подсказка поверх картинки — только когда интерфейс виден: на выступлении
+// о нажатом говорит подсветка пульта, а не надпись на экране зрителя.
+function djToast(t){
+  if (clean) return;
+  showToast(String(t).replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' })[c]));
+}
+
+function buildDjPanel(rows){
+  const box = document.createElement('div'); box.className = 'ddj gone';
+  const st = document.createElement('div'); st.className = 'midi-st on';
+  const bar = document.createElement('div'); bar.className = 'prow';
+  const mk = (txt, title, fn) => { const b = document.createElement('button');
+    b.textContent = txt; b.title = title; b.onclick = fn; bar.append(b); return b; };
+  const bLed = mk('подсветка', 'кнопки и пэды пульта светятся тем, что за ними сейчас. с открытым rekordbox выключите — будут спорить',
+    () => { DJ.leds = !DJ.leds; if (!DJ.leds) djLedsOff(); djSave(); djShow(); });
+  mk('заводские', 'вернуть привязки ручек и фейдеров пульта по умолчанию',
+    () => { djStore().banks[djStore().bank].binds = { ...DDJ.binds }; DJ.wait = {}; midiSave(); midiShow(); });
+  const map = document.createElement('details'), sum = document.createElement('summary');
+  const list = document.createElement('div'); list.className = 'midi-list';
+  map.append(sum, list);
+  map.ontoggle = () => djShow();
+  const leg = document.createElement('details'), ls = document.createElement('summary');
+  ls.textContent = 'кнопки, пэды, джоги';
+  const lb = document.createElement('div'); lb.className = 'ddj-leg';
+  leg.append(ls, lb);
+  const mon = document.createElement('div'); mon.className = 'midi-mon';
+  box.append(st, bar, map, leg, mon);
+  rows.append(box);
+  djLegend(lb);
+  DJ.ui = { box, st, bLed, map, sum, list, mon };
+}
+function djLegend(el){
+  const h = t => { const e = document.createElement('h5'); e.textContent = t; el.append(e); };
+  const line = (name, text) => { const e = document.createElement('div'), b = document.createElement('b');
+    b.textContent = name; e.append(b, ' ' + text); el.append(e); };
+  const both = key => DJ_ACT[key][0] + (DJ_ACT[key + '^'] ? ' · ⇧ ' + DJ_ACT[key + '^'][0] : '');
+  h('левая дека — время картинки');
+  line('джог', 'скретч времени · касание — держать · бок — подтяжка · ⇧ — быстрая прокрутка');
+  for (const [id, n] of DJ_DECK_BTNS) line(n, both('d0:' + id));
+  h('правая дека — цвет и пространство');
+  line('джог', 'тон по кругу · бок — вихрь · ⇧ — поворот калейдоскопа');
+  for (const [id, n] of DJ_DECK_BTNS) line(n, both('d1:' + id));
+  h('микшер и beat fx');
+  line('BROWSE', 'сцена · ⇧ встроенный пресет');
+  for (const [id, n] of DJ_MIX_BTNS) line(n, both(id));
+  line('FX CH SELECT', 'ход времени: 1 — по долям, 2 — по ударам, 1&2 — плавно');
+  h('пэды — банк по режиму пульта, дека 1 | дека 2');
+  DJ_BANK.forEach((b, m) => line(DDJ_MODE_NAMES[m], b.d));
+  h('ручки и фейдеры');
+  line('без SHIFT', 'канал 1 — реакция на звук, канал 2 — форма сцены, темпы — скорость и наплыв, кроссфейдер — дуотон');
+  line('с SHIFT', 'второй слой, у ползунка — имя органа с ⇧; подробно — в списке выше');
+}
+function djShow(){
+  const u = DJ.ui;
+  if (!u) return;
+  u.box.classList.toggle('gone', !DJ.input);
+  if (!DJ.input) return;
+  u.st.textContent = DJ.input.name + ' · пэды: ' + djBankName(0) + ' | ' + djBankName(1) +
+                     ' · время ' + djTimeText() + (DJ.auto ? ' · автопилот' : '');
+  u.bLed.classList.toggle('on', DJ.leds);
+  const b = midiBinds(DJ), keys = Object.keys(b);
+  u.sum.textContent = 'ручки и фейдеры · ' + keys.length + ' привязок';
+  u.mon.textContent = DJ.last || 'пульт на связи, сообщений пока не было';
+  if (!u.map.open) return;                  // свёрнутый список не перестраиваем
+  u.list.replaceChildren(...keys.map(key => {
+    const k = b[key], row = document.createElement('div'), id = key.replace('^', '');
+    const n = document.createElement('b'); n.textContent = midiName(key, DJ);
+    n.title = (key.endsWith('^') ? 'SHIFT + ' : '') + (DDJ_LONG[id] || id);
+    const t = document.createElement('span'); t.textContent = djLabel(k) + (DJ.wait[k] ? '  ' + DJ.wait[k] : '');
+    const x = document.createElement('i'); x.textContent = '✕'; x.title = 'снять привязку';
+    x.onclick = () => { delete b[key]; midiSave(); midiShow(); };
+    row.append(n, t, x); return row;
+  }));
 }
 
 midiLoad();
@@ -6856,6 +7723,15 @@ function diagText(){
          ' · подхват ' + (MIDI.pickup ? 'вкл' : 'выкл') + (MIDI.program ? ' · программа ' + MIDI.program : ''));
   L.push('  ' + (Object.keys(mb).map(key => midiName(key) + '→' + mb[key]).join('  ') || 'привязок нет'));
   if (MIDI.last) L.push('  последнее: ' + MIDI.last);
+  L.push('');
+  L.push('ПУЛЬТ: ' + (DJ.input ? DJ.input.name + (DJ.out ? '' : ' · выхода нет, подсветки не будет') +
+         ' · подсветка ' + (DJ.leds ? 'вкл' : 'выкл') + ' · привязок ' + Object.keys(midiBinds(DJ)).length
+         : DDJ.name + ' не подключён'));
+  if (DJ.input){
+    L.push('  пэды: дека 1 — ' + djBankName(0) + ', дека 2 — ' + djBankName(1) + ' · время ' + djTimeText() +
+           (DJ.auto ? ' · автопилот' : ''));
+    if (DJ.last) L.push('  последнее: ' + DJ.last);
+  }
   return L.join('\n');
 }
 
@@ -6973,9 +7849,11 @@ function frame(){
   const cpu0 = performance.now();
   analyze(dt, now);
   musUpdate(dt);
+  djFrame();                  // пульт: дроп руками, дробь, автопилот, подсветка
   lgaUpdate(dt);
   // Время течёт быстрее на громких кусках — сцена ускоряется вместе с треком.
   T += dt * (0.12 + CFG.speed*1.6 + F.energy*CFG.dEnergy*1.1);
+  T = djTime(T, dt);          // пульт: стоп-кадр, скретч, лупы, ход рывками
 
   allocate();
   sceneSwitch();
