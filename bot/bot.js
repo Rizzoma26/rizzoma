@@ -23,6 +23,7 @@ import { pathToFileURL } from 'node:url';
 import express from 'express';
 import { Bot, InlineKeyboard } from 'grammy';
 import { PostgresBotStore } from './storage.js';
+import { loadBetaConfig } from './beta-config.js';
 
 /* экономику берём из того же файла, что и фронт: цена считается по одним
    правилам на клиенте и на сервере, но решает всегда сервер */
@@ -77,11 +78,6 @@ function numOrNull(v){
   const n = Number(v);
   return (v === undefined || v === '' || !isFinite(n) || n < 0) ? null : Math.round(n);
 }
-function parseList(v){
-  if(!v) return null;
-  const a = String(v).split(',').map(s => parseInt(s.trim(), 10)).filter(n => n >= 0 && n < ECON.TIERS.length);
-  return a.length ? a : null;
-}
 
 if(!TOKEN || !APP_URL){
   console.error('Нужны BOT_TOKEN и APP_URL в .env — см. .env.example');
@@ -96,7 +92,12 @@ if(!REGISTRATION_API_BASE) console.warn('REGISTRATION_API_BASE пуст: Postgre
 const users = new Map();   // tgId -> {id,name,username,photo,code,invitedBy,paid,revoked,ts}
 const codes = new Map();   // code -> tgId
 const payments = [];       // журнал платежей теста (последние 200)
-let betaOpen = parseList(process.env.BETA_OPEN) || ECON.BETA_OPEN.slice();
+/* Бета контура: список открытых узлов из BETA_OPEN (bot/beta-config.js).
+   Неверное значение останавливает запуск — проверка в блоке isEntry ниже. */
+const BETA = loadBetaConfig(process.env, {
+  tierCount: ECON.TIERS.length, defaultOpen: ECON.BETA_OPEN, required: false
+});
+let betaOpen = BETA.ok ? [...BETA.open] : ECON.BETA_OPEN.slice();
 
 /* Баллы за канал живут отдельно от users: реакцию может поставить человек,
    который приложение ни разу не открывал. Заводить ему узел дерева и
@@ -716,6 +717,11 @@ if(isEntry){
     || !Number.isInteger(MAX_AGE) || MAX_AGE < 60 || MAX_AGE > 604800
     || !URL.canParse(APP_URL) || !APP_URL.startsWith('https://') || new URL(APP_URL).origin !== ORIGIN){
     console.error('Invalid environment, allowlist, origin, QA or payment configuration');
+    process.exit(1);
+  }
+  // до подключения к БД: плохой список беты не должен успеть ничего записать
+  if(!BETA.ok){
+    console.error(BETA.error);
     process.exit(1);
   }
   if(!REGISTRATION_API_BASE || !STORE){
