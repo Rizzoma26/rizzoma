@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>noisefield — стенд живого входа</title>
+<style>
+  :root{
+    --ink:#04060b; --glass:rgba(7,11,20,.82); --line:rgba(120,160,220,.16);
+    --fg:#c8d4e6; --dim:#6f819d; --accent:#6ea8ff; --hot:#ff9a6e;
+    color-scheme: dark;
+  }
+  html,body{ margin:0; min-height:100%; background:var(--ink); color:var(--fg);
+             font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  main{ max-width:1080px; margin:0 auto; padding:22px 18px 60px; }
+  h1{ font-size:17px; font-weight:500; letter-spacing:.22em; color:#eaf1ff; margin:0 0 4px; }
+  p{ color:var(--dim); margin:6px 0; }
+  .glass{ background:var(--glass); border:1px solid var(--line); border-radius:10px; }
+  #sum{ padding:12px 14px; margin:16px 0; }
+  #sum b{ font-weight:500; letter-spacing:.14em; }
+  .ok{ color:var(--accent); } .bad{ color:var(--hot); }
+  table{ border-collapse:collapse; width:100%; }
+  th,td{ text-align:left; vertical-align:top; padding:6px 10px; border-bottom:1px solid var(--line); }
+  th{ color:var(--dim); font-weight:500; letter-spacing:.12em; font-size:11px; }
+  td.g{ color:var(--dim); }
+  tr.grp td{ color:#eaf1ff; letter-spacing:.16em; border-bottom:none; padding-top:16px; }
+  td.v{ width:22px; text-align:center; }
+  code{ color:var(--fg); }
+</style>
+</head>
+<body>
+<main>
+  <h1>noisefield · живой вход</h1>
+  <p>Стенд берёт код добычи звука прямо из <code>../noisefield.html</code> — кусок между метками
+     <code>nf-live:begin</code> и <code>nf-live:end</code> — и гоняет его на подменённом media-API.
+     Ни сборки, ни зависимостей: откройте страницу через тот же локальный сервер, что и сам файл.</p>
+  <div id="sum" class="glass">запускаю…</div>
+  <table id="tbl"></table>
+</main>
+<script>
+"use strict";
+
+/* Подменять браузерный media-API можно только снаружи кода, который его
+   зовёт. Поэтому вырезанный кусок исполняется с собственным navigator:
+   геттер отдаёт ту заглушку, которую поставил текущий сценарий. */
+let MD = null;
+const navStub = { get mediaDevices(){ return MD; } };
+
+async function loadModule(){
+  const html = await (await fetch('../noisefield.html', {cache:'no-store'})).text();
+  const a = html.indexOf('/* nf-live:begin');
+  const b = html.indexOf('/* nf-live:end */');
+  if (a < 0 || b < 0) throw new Error('в noisefield.html не нашлись метки nf-live');
+  const src = html.slice(a, b);
+  const names = ['LOOPBACK_RE','isLoopback','SRCLOG','logTry','isHard','isGone','SourceError',
+                 'media','dropStream','listInputs','deviceShapes','openDevice','openLoopback',
+                 'displayTries','surfaceOf','noAudioReason','SURFACE_RU','openDisplay',
+                 'openComputer','disposeSource'];
+  return new Function('navigator', src + '\nreturn {' + names.join(',') + '};')(navStub);
+}
+
+/* ---- поддельные дорожки и потоки ---------------------------------------
+   Дорожки складываем в общий список: по нему после каждого сценария видно,
+   не осталось ли живых. Забытая дорожка на настоящей машине держит красную
+   полоску захвата и не отпускает устройство. */
+let TRACKS = [];
+function fakeTrack(kind, label, settings){
+  const t = { kind, label: label || '', readyState:'live', enabled:true, onended:null,
+              getSettings: () => Object.assign({}, settings || {}),
+              applyConstraints: () => Promise.resolve(),
+              stop(){ this.readyState = 'ended'; } };
+  TRACKS.push(t);
+  return t;
+}
+const fakeStream = tracks => ({
+  getTracks: () => tracks.slice(),
+  getAudioTracks: () => tracks.filter(t => t.kind === 'audio'),
+  getVideoTracks: () => tracks.filter(t => t.kind === 'video'),
+});
+function err(name, msg){ const e = new Error(msg || name); e.name = name; return e; }
+const dev = (deviceId, label) => ({ kind:'audioinput', deviceId, label, groupId:'g-' + deviceId });
+
+// Как выглядит удачный захват экрана: видео с поверхностью и, если повезло, звук.
+const displayStream = (surface, withAudio) => fakeStream(
+  [fakeTrack('video', 'screen', { displaySurface: surface })]
+    .concat(withAudio ? [fakeTrack('audio', 'System Audio', { sampleRate:48000, channelCount:2 })] : []));
+
+const CLEAN = { autoGainControl:false, noiseSuppression:false, echoCancellation:false,
+                sampleRate:48000, channelCount:2, deviceId:'default' };
+const DIRTY = { autoGainControl:true, noiseSuppression:true, echoCancellation:true,
+                sampleRate:48000, channelCount:1, deviceId:'default' };
+
+/* ---- сценарии ---------------------------------------------------------- */
+
+const S = [];
+const scen = (grp, name, want, fn) => S.push({ grp, name, want, fn });
+const shapeName = c => c === true ? 'голый'
+                     : c.channelCount ? 'жёсткий'
+                     : c.echoCancellation === false ? 'мягкий' : 'голый';
+
+/* --- выбор поверхности при захвате экрана --- */
+
+scen('захват экрана', 'весь экран + звук', 'старт · звук со всего экрана', async nf => {
+  MD = { getDisplayMedia: async () => displayStream('monitor', true) };
+  const r = await nf.openDisplay('screen');
+  return { got: 'старт · ' + r.label, stream: r.stream };
+});
+
+scen('захват экрана', 'вкладка + звук', 'старт · звук вкладки · это звук одной вкладки, а не всего компьютера',
+async nf => {
+  MD = { getDisplayMedia: async () => displayStream('browser', true) };
+  const r = await nf.openDisplay('tab');
+  return { got: 'старт · ' + r.label + ' · ' + r.warn, stream: r.stream };
+});
+
+scen('захват экрана', 'окно без звука', 'отказ · у окна звука нет — выберите «Весь экран»', async nf => {
+  MD = { getDisplayMedia: async () => displayStream('window', false) };
+  try { const r = await nf.openDisplay('screen'); return { got: 'старт · ' + r.label, stream: r.stream }; }
+  catch(e){ return { got: 'отказ · ' + e.message }; }
+});
+
+scen('захват экрана', 'экран без галки со звуком', 'отказ · нужна галка «Также поделиться звуком системы»',
+async nf => {
+  MD = { getDisplayMedia: async () => displayStream('monitor', false) };
+  try { const r = await nf.openDisplay('screen'); return { got: 'старт · ' + r.label, stream: r.stream }; }
+  catch(e){ return { got: 'отказ · ' + e.message }; }
+});
+
+scen('захват экрана', 'первый запрос отбит, второй проходит', 'старт · попыток 2 · звук со всего экрана',
+async nf => {
+  let n = 0;
+  MD = { getDisplayMedia: async () => { if (++n === 1) throw err('NotSupportedError'); return displayStream('monitor', true); } };
+  const r = await nf.openDisplay('screen');
+  return { got: 'старт · попыток ' + n + ' · ' + r.label, stream: r.stream };
+});
+
+/* --- звук компьютера: прямой путь и отход на петлю --- */
+
+scen('звук компьютера', 'петля экрана не открылась, есть «Стерео микшер»',
+     'старт · Стерео микшер (Realtek) · через петлевой вход', async nf => {
+  MD = {
+    getDisplayMedia: async () => { throw err('NotReadableError', 'Could not start audio source'); },
+    enumerateDevices: async () => [dev('mic','Микрофон'), dev('mix','Стерео микшер (Realtek)')],
+    getUserMedia: async () => fakeStream([fakeTrack('audio','Стерео микшер (Realtek)', CLEAN)]),
+  };
+  const r = await nf.openComputer();
+  return { got: 'старт · ' + r.label + ' · ' + r.warn.split(':')[0], stream: r.stream };
+});
+
+scen('звук компьютера', 'ни экрана, ни петли', 'отказ · обе причины названы', async nf => {
+  MD = {
+    getDisplayMedia: async () => { throw err('NotReadableError'); },
+    enumerateDevices: async () => [dev('mic','Микрофон')],
+    getUserMedia: async () => { throw err('NotReadableError'); },
+  };
+  try { const r = await nf.openComputer(); return { got: 'старт · ' + r.label, stream: r.stream }; }
+  catch(e){
+    const both = /захват экрана не начался/.test(e.message) && /петлевого входа в системе нет/.test(e.message);
+    return { got: 'отказ · ' + (both ? 'обе причины названы' : e.message) };
+  }
+});
+
+scen('звук компьютера', 'отмена диалога не ведёт на петлю', 'отказ · захват экрана отменён · getUserMedia не звали',
+async nf => {
+  let um = 0;
+  MD = {
+    getDisplayMedia: async () => { throw err('NotAllowedError', 'Permission denied'); },
+    enumerateDevices: async () => [dev('mix','Стерео микшер')],
+    getUserMedia: async () => { um++; return fakeStream([fakeTrack('audio','Стерео микшер', CLEAN)]); },
+  };
+  try { const r = await nf.openComputer(); return { got: 'старт · ' + r.label, stream: r.stream }; }
+  catch(e){ return { got: 'отказ · ' + e.message + ' · getUserMedia ' + (um ? 'звали ' + um : 'не звали') }; }
+});
+
+/* --- открытие устройства --- */
+
+scen('устройство', 'жёсткие условия проходят', 'старт · попыток 1 · жёсткий · обработка выкл', async nf => {
+  const calls = [];
+  MD = { getUserMedia: async c => { calls.push(c.audio); return fakeStream([fakeTrack('audio','Line In', CLEAN)]); } };
+  const r = await nf.openDevice('line', 'device');
+  return { got: 'старт · попыток ' + calls.length + ' · ' + calls.map(shapeName).join(' ') +
+                ' · обработка ' + (r.warn ? 'вкл' : 'выкл'), stream: r.stream };
+});
+
+scen('устройство', 'жёсткие отбиты, голый проходит', 'старт · попыток 3 · жёсткий мягкий голый · обработка вкл',
+async nf => {
+  const calls = [];
+  MD = { getUserMedia: async c => {
+    calls.push(c.audio);
+    if (calls.length < 3) throw err('NotReadableError', 'Could not start audio source');
+    return fakeStream([fakeTrack('audio','Стерео микшер', DIRTY)]);
+  } };
+  const r = await nf.openDevice('mix', 'loopback');
+  return { got: 'старт · попыток ' + calls.length + ' · ' + calls.map(shapeName).join(' ') +
+                ' · обработка ' + (r.warn ? 'вкл' : 'выкл'), stream: r.stream };
+});
+
+scen('устройство', 'все три отбиты · петля', 'отказ · петля не открылась — звук идёт мимо аналогового выхода?',
+async nf => {
+  MD = { getUserMedia: async () => { throw err('NotReadableError'); } };
+  try { const r = await nf.openDevice('mix', 'loopback'); return { got: 'старт', stream: r.stream }; }
+  catch(e){ return { got: 'отказ · ' + e.message }; }
+});
+
+scen('устройство', 'все три отбиты · микрофон', 'отказ · вход не открылся', async nf => {
+  MD = { getUserMedia: async () => { throw err('NotReadableError'); } };
+  try { const r = await nf.openDevice('mic', 'device'); return { got: 'старт', stream: r.stream }; }
+  catch(e){ return { got: 'отказ · ' + e.message }; }
+});
+
+scen('устройство', 'отказ пользователя обрывает перебор', 'отказ · доступ ко входу не разрешён · попыток 1',
+async nf => {
+  let n = 0;
+  MD = { getUserMedia: async () => { n++; throw err('NotAllowedError', 'Permission denied'); } };
+  try { const r = await nf.openDevice('line', 'device'); return { got: 'старт', stream: r.stream }; }
+  catch(e){ return { got: 'отказ · ' + e.message + ' · попыток ' + n }; }
+});
+
+scen('устройство', 'устройство исчезло', 'старт · молча на умолчание', async nf => {
+  const calls = [];
+  MD = { getUserMedia: async c => {
+    calls.push(c.audio);
+    const id = c.audio === true ? null : (c.audio.deviceId && c.audio.deviceId.exact);
+    if (id) throw err('OverconstrainedError', 'device not found');
+    return fakeStream([fakeTrack('audio','Динамики по умолчанию', CLEAN)]);
+  } };
+  const r = await nf.openDevice('ghost', 'device');
+  const asked = calls.some(c => c === true || !c.deviceId);
+  return { got: 'старт · ' + (asked && !r.warn ? 'молча на умолчание' : 'иначе'), stream: r.stream };
+});
+
+scen('устройство', 'петлевые входы помечены', '↻ у трёх из пяти', async nf => {
+  const list = [dev('1','Микрофон (Realtek)'), dev('2','Стерео микшер (Realtek)'),
+                dev('3','CABLE Output (VB-Audio Virtual Cable)'), dev('4','Line In'),
+                dev('5','What U Hear')];
+  const n = list.filter(nf.isLoopback).length;
+  return { got: '↻ у ' + ['нуля','одного','двух','трёх','четырёх','пяти'][n] + ' из пяти' };
+});
+
+/* --- уборка --- */
+
+scen('уборка', 'отказ по звуку не оставляет сеанс захвата', 'дорожки закрыты', async nf => {
+  MD = { getDisplayMedia: async () => displayStream('monitor', false) };
+  try { await nf.openDisplay('screen'); } catch(e){}
+  return { got: TRACKS.every(t => t.readyState === 'ended') ? 'дорожки закрыты' : 'дорожки живы' };
+});
+
+scen('уборка', 'disposeSource снимает ноды и дорожки', 'ноды отключены · дорожки закрыты', async nf => {
+  const node = { dis:0, port:{ onmessage: () => {} }, disconnect(){ this.dis++; } };
+  const src  = { dis:0, disconnect(){ this.dis++; } };
+  const stream = fakeStream([fakeTrack('audio','Line In', CLEAN), fakeTrack('video','screen', {})]);
+  const L = { node, src, stream };
+  nf.disposeSource(L);
+  const nodes = node.dis === 1 && src.dis === 1 && node.port.onmessage === null &&
+                !L.node && !L.src && !L.stream;
+  const tracks = stream.getTracks().every(t => t.readyState === 'ended');
+  return { got: (nodes ? 'ноды отключены' : 'ноды остались') + ' · ' +
+                (tracks ? 'дорожки закрыты' : 'дорожки живы') };
+});
+
+scen('уборка', 'журнал попыток пишется, а не теряется', 'записей больше нуля, у отказов есть имя ошибки',
+async nf => {
+  const before = nf.SRCLOG.tries.length;
+  MD = { getUserMedia: async () => { throw err('NotReadableError', 'Could not start audio source'); } };
+  try { await nf.openDevice('mix', 'loopback'); } catch(e){}
+  const added = nf.SRCLOG.tries.slice(before);
+  const named = added.length > 0 && added.every(t => t.ok || (t.name && t.message));
+  return { got: added.length > 0 && named ? 'записей больше нуля, у отказов есть имя ошибки'
+                                          : 'журнал пуст или без имён' };
+});
+
+/* ---- прогон ------------------------------------------------------------ */
+
+(async () => {
+  const sum = document.getElementById('sum'), tbl = document.getElementById('tbl');
+  let nf;
+  try { nf = await loadModule(); }
+  catch(e){
+    sum.innerHTML = '<span class="bad">не смог взять код из ../noisefield.html: ' + e.message +
+      '</span><br><span style="color:var(--dim)">файловый протокол не отдаёт соседние файлы — ' +
+      'откройте стенд через <code>python3 -m http.server</code>, как и сам noisefield.</span>';
+    return;
+  }
+  tbl.innerHTML = '<tr><th>сценарий</th><th>ожидалось</th><th>получилось</th><th>хвосты</th><th></th></tr>';
+  let ok = 0, grp = '';
+  for (const s of S){
+    TRACKS = [];
+    let got, tails = '—';
+    try {
+      const r = await s.fn(nf);
+      got = r.got;
+      if (r.stream) nf.disposeSource({ stream: r.stream });   // сценарий кончился — сеанса быть не должно
+      const live = TRACKS.filter(t => t.readyState === 'live').length;
+      tails = live ? live + ' живых' : 'нет';
+    } catch(e){ got = 'исключение · ' + e.name + ': ' + e.message; }
+    const clean = tails === 'нет' || tails === '—';
+    const pass = got === s.want && clean;
+    if (pass) ok++;
+    if (s.grp !== grp){
+      grp = s.grp;
+      tbl.insertAdjacentHTML('beforeend', '<tr class="grp"><td colspan="5">' + grp + '</td></tr>');
+    }
+    const td = t => '<td>' + String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</td>';
+    tbl.insertAdjacentHTML('beforeend', '<tr>' + td(s.name) +
+      '<td class="g">' + s.want + '</td>' +
+      '<td class="' + (pass ? '' : 'bad') + '">' + got + '</td>' +
+      '<td class="' + (tails === 'нет' || tails === '—' ? 'g' : 'bad') + '">' + tails + '</td>' +
+      '<td class="v ' + (pass ? 'ok' : 'bad') + '">' + (pass ? '✓' : '✗') + '</td></tr>');
+  }
+  sum.innerHTML = '<b class="' + (ok === S.length ? 'ok' : 'bad') + '">' + ok + ' из ' + S.length +
+    ' зелёных</b><br><span style="color:var(--dim)">media-API подменён целиком: живое железо стенд ' +
+    'не проверяет и проверить не может. Он ловит регрессии в разборе отказов и в уборке.</span>';
+})();
+</script>
+</body>
+</html>
