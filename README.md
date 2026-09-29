@@ -123,6 +123,8 @@ HTTP fixture не проверяет Secure cookie.
 | `docs/handoffs/branch-context.md` | созданный генератором снимок Git и контекстных документов |
 | `assets/js/data/entities.js` | сериализуемые модели fixture/offline-данных и нормализация старых записей |
 | `assets/js/data/client-state-repository.js` | localStorage/CloudStorage adapter, attribution, claims и локальные кэши |
+| `assets/js/scene/geometry.js` | алгоритм геометрии сцены (клин, спина, узлы, облако, сигилы) — числа без DOM; запасной путь страницы и источник генератора |
+| `assets/generated/scene-data.js` | заранее посчитанная геометрия сцены, кэшируется браузером между запусками. Генерируется `npm run build:scene` (`tools/build-scene-data.mjs`), вручную не правится |
 | `economy.js` | пороги узлов, тарифы, расчёт цены, состав беты. Тот же файл считает цену на бэкенде и в юнит-тестах |
 | `engagement.js` | баллы за активность в канале: правила, дедуп, суточный потолок, откат. Тем же файлом начисляет бэкенд |
 | `config.js` | конфигурация деплоя: бот, short name, адрес бэкенда, цены, событие, список админов беты |
@@ -589,6 +591,8 @@ npm run test:e2e           # Playwright: туман, кромка, чекаут,
 | `tests/engagement.bot.test.mjs` | приём настоящих Telegram-апдейтов: фильтр чата, отсев ботов, анонимные реакции, `/api/engagement`, `allowed_updates` |
 | `tests/beta-config.test.mjs` | строгий разбор `BETA_OPEN`: диапазон, повторы, пустые элементы, текст ошибки без чужих значений |
 | `tests/beta-api.bot.test.mjs` | `/api/state` отдаёт список контура, записи беты через API нет |
+| `tests/scene-data.test.mjs` | `scene-data.js` свежий, совпадает с прежним построением на лету, не содержит данных контура |
+| `tests/e2e/scene.spec.mjs` | дерево из ресурса и из запасного расчёта совпадает до пикселя |
 | `tests/e2e/beta.spec.mjs` | туман, кромка поля, чекаут, доступ к бета-админке |
 | `tests/e2e/engagement.spec.mjs` | показ баллов, пустые состояния, локальное хранение |
 

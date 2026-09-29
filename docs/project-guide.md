@@ -13,6 +13,7 @@
 |---|---|---|
 | Telegram Mini App | `index.html`, `registration.js`, `assets/js/data/` | Экран дерева, взаимодействия, клиентская модель демо/offline-данных, обмен/повторное использование сессии |
 | Бренд и ресурсы | `assets/brand/` | Логотип SVG и путь, используемый Canvas-сценой |
+| Геометрия сцены | `assets/js/scene/geometry.js` → `tools/build-scene-data.mjs` → `assets/generated/scene-data.js` | Алгоритм и сгенерированные числа сцены; после правки `TIERS`/`BRANCHES` в `economy.js` или алгоритма — `npm run build:scene` ([ресурсы](assets.md)) |
 | Контракты | `packages/contracts/` | Runtime-схемы запросов и ответов API |
 | API идентичности | `apps/api/src/auth/` | Telegram-проверка, регистрации, сессии; доменные интерфейсы лежат в `auth.models.ts`, SQL — в `auth.repository.ts` |
 | Telegram-бот | `bot/bot.js`, `bot/storage.js` | Bot API, реферальные сценарии, счета, `successful_payment`, баллы и администрирование |

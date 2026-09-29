@@ -26,6 +26,11 @@
 <script src="engagement.js"></script>
 <script src="assets/js/data/entities.js"></script>
 <script src="assets/js/data/client-state-repository.js"></script>
+<!-- Геометрия сцены: алгоритм (запасной путь) и заранее посчитанные числа.
+     Второй файл кэшируется браузером между запусками; ?v= — хэш содержимого,
+     его выставляет tools/build-scene-data.mjs. Не загрузился — сцена считается на месте. -->
+<script src="assets/js/scene/geometry.js"></script>
+<script src="assets/generated/scene-data.js?v=75f8669c"></script>
 <style>
 /* ============================================================
    RIZZOMA — Mini App «дерево узлов»
@@ -746,8 +751,9 @@ const $  = (s,r=document) => r.querySelector(s);
 const $$ = (s,r=document) => [...r.querySelectorAll(s)];
 const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const clamp = (v,a,b) => v<a?a:(v>b?b:v);
-function mulberry32(a){ return () => { a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
-function hashStr(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+/* генератор и хеш — общие со сценой: assets/js/scene/geometry.js */
+const GEO = window.RIZZOMA_SCENE_GEOMETRY;
+const {mulberry32, hashStr} = GEO;
 
 let toastTimer;
 function toast(msg, warn){
@@ -767,28 +773,22 @@ function logEvent(kind, detail){
   if($('#admLog') && !$('#admHost').hidden) renderAdmin();
 }
 
+/* ---------- статические данные сцены ----------
+   Клин, спина, узлы, облако точек и сигилы скиллов зависят только от сидов
+   и economy.js. Их заранее считает tools/build-scene-data.mjs в
+   assets/generated/scene-data.js — браузер держит файл в кэше между
+   запусками. Нет файла или он посчитан для других входов (правили TIERS,
+   BRANCHES) — те же числа считает общий модуль прямо здесь. */
+const SCENE = (() => {
+  const s = window.RIZZOMA_SCENE;
+  return s && s.version === GEO.versionOf(ECON) ? s : GEO.build(ECON);
+})();
+
 /* детерминированный сигил: seed = хеш строки. Один генератор на аватар узла,
-   иконку скилла в окне и знак на канве — источник формы один. */
-function sigilPath(seed){
-  const rnd = mulberry32(hashStr(String(seed)));
-  const arms = 3 + Math.floor(rnd()*3);
-  let d = '';
-  for(let a=0;a<arms;a++){
-    let x = 50, y = 92 - a*6;
-    const seg = 3 + Math.floor(rnd()*3);
-    let path = `M ${x} ${y}`;
-    for(let s=0;s<seg;s++){
-      const dx = (10 + rnd()*22) * (rnd()<0.5?-1:1);
-      const dy = -(12 + rnd()*20);
-      x += dx*0.5; y += dy*0.6;
-      path += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
-      x += dx*0.5;
-      path += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
-    }
-    d += path + ' ';
-  }
-  return d.trim();
-}
+   иконку скилла в окне и знак на канве — источник формы один. Сигилы
+   скиллов уже посчитаны в SCENE, остальные (коды узлов) — на лету. */
+const SKILL_SIGILS = new Map(TIERS.map((t, i) => ['SKILL_' + t.skill, SCENE.sigils[i]]));
+const sigilPath = seed => SKILL_SIGILS.get(String(seed)) || GEO.sigilPath(seed);
 function sigilSVG(seed, color){
   const d = sigilPath(seed);
   return `<svg viewBox="0 0 100 100" aria-hidden="true">
@@ -803,38 +803,16 @@ function sigilSVG(seed, color){
    логотипа. Path2D на группу глубины → кадр стоит ~70 stroke.
    В приложении этот слой ушёл на задний план: он рисует мандалу
    вокруг ядра, а поверх на той же геометрии живёт дерево узлов.
+   Числа клина — в SCENE (алгоритм: assets/js/scene/geometry.js),
+   здесь из них собираются Path2D.
    ============================================================ */
-function buildWedge(seed, opts){
-  const rnd = mulberry32(seed);
-  const {depth, spread, decay, kink} = opts;
-  const groups = Array.from({length:depth+1}, () => ({seg:new Path2D(), dots:new Path2D(), pts:[]}));
-  const paths = [];
-  /* polys — те же звенья, но точками: по ним рисуется «прожиг» ветви
-     и летят частицы. Аддитивно к прежнему выводу, геометрия не меняется. */
-  const polys = [];
-
-  function branch(x,y,ang,len,d,trail,segs){
-    if(d>depth) return;
-    // ломаный сегмент: середина смещена в сторону — трайбл-ритм вместо прямой
-    const mx = x + Math.cos(ang)*len*0.55 + Math.cos(ang+Math.PI/2)*len*kink*(rnd()<0.5?-1:1);
-    const my = y + Math.sin(ang)*len*0.55 + Math.sin(ang+Math.PI/2)*len*kink*(rnd()<0.5?-1:1);
-    const ex = x + Math.cos(ang)*len, ey = y + Math.sin(ang)*len;
-    const g = groups[d];
-    g.seg.moveTo(x,y); g.seg.lineTo(mx,my); g.seg.lineTo(ex,ey);
-    const r = (0.006 + (depth-d)*0.0016) * (opts.dot || 1);
-    g.dots.moveTo(ex+r,ey); g.dots.arc(ex,ey,r,0,Math.PI*2);
-    g.pts.push([ex,ey]);
-    const t2 = trail.concat([[ex,ey]]);
-    const s2 = segs.concat([[[x,y],[mx,my],[ex,ey]]]);
-    if(d===depth){ paths.push(t2); polys.push(s2); return; }
-    const kids = rnd()<0.22 ? 3 : 2;
-    for(let i=0;i<kids;i++){
-      const off = (i - (kids-1)/2) * spread * (0.75 + rnd()*0.5);
-      branch(ex, ey, ang+off, len*decay*(0.85+rnd()*0.3), d+1, t2, s2);
-    }
-  }
-  branch(0,0,-Math.PI/2,0.30,0,[[0,0]],[]);
-  return {groups, paths, polys};
+function wedgePaths(groups){
+  return {groups: groups.map(g => {
+    const seg = new Path2D(), dots = new Path2D(), a = g.seg, b = g.dots, r = g.r;
+    for(let k=0;k<a.length;k+=6){ seg.moveTo(a[k],a[k+1]); seg.lineTo(a[k+2],a[k+3]); seg.lineTo(a[k+4],a[k+5]); }
+    for(let k=0;k<b.length;k+=2){ dots.moveTo(b[k]+r,b[k+1]); dots.arc(b[k],b[k+1],r,0,Math.PI*2); }
+    return {seg, dots};
+  })};
 }
 
 /* Контур логотипа = ядро дерева. Загружается из отдельного брендового SVG. */
@@ -858,77 +836,36 @@ fetch(new URL('assets/brand/logo.svg', document.baseURI)).then(function(response
    они и несут ветви прокачки, зеркальные двойники остаются
    декоративным облаком. Глубина ветвления = кольцо прокачки.
    ============================================================ */
-const MAND_S = 3;                                   // три ветви → тройная симметрия
+const MAND_S = GEO.MAND_S;                          // три ветви → тройная симметрия
 /* глубина фиксированная: геометрия не должна зависеть от устройства,
    иначе дерево на телефоне и на десктопе — разное */
 /* decay ближе к единице: звенья к периферии почти не укорачиваются,
    поэтому кольца прокачки ложатся равномерно, а не слипаются снаружи */
 /* глубина 6, а не 7: седьмое кольцо удваивало геометрию кадра, а плотность
    картинки всё равно держит кэшированное облако точек */
-const MANDALA = buildWedge(480921, {depth:6, spread:0.44, decay:0.86, kink:0.14, dot:1.9});
+const MANDALA = wedgePaths(SCENE.groups);
 
 /* Спина ветви — самая длинная корневая трасса клина: она уходит от ядра
    дальше всех, поэтому кольца прокачки на ней расходятся, а не слипаются
-   у периферии. На её вершинах и сидят скиллы. */
-const SPINE = (() => {
-  let best = 0, bd = -1;
-  MANDALA.paths.forEach((p, i) => {
-    const e = p[p.length-1], d = Math.hypot(e[0], e[1]);
-    if(d > bd){ bd = d; best = i; }
-  });
-  return {pts: MANDALA.paths[best], polys: MANDALA.polys[best]};
-})();
-const SPINE_R = SPINE.pts.map(p => Math.hypot(p[0], p[1]));
+   у периферии. На её вершинах и сидят скиллы. polys — те же звенья
+   точками: по ним рисуется «прожиг» ветви и летят частицы. */
+const SPINE = SCENE.spine;
 
 /* SKILLS[i] = {i, b, k, wx, wy, polys} — wx/wy это координаты вершины
    сети в системе клина; экранная позиция считается тем же поворотом,
-   что и у луча, поэтому узел физически привязан к сети. */
-const SKILLS = [];
-BRANCHES.forEach((br, b) => {
-  const last = SPINE.pts.length - 1;
-  // кольца выбираются по РАДИУСУ, а не по номеру: к периферии звенья сети
-  // укорачиваются, и равномерный шаг по индексу слепил бы дальние узлы.
-  // Первое кольцо пропускаем — там узел налезал бы на знак.
-  // два внешних кольца сети остаются без узлов: облако сети должно уходить
-  // за пределы дерева, а не заканчиваться на последнем скилле
-  const outer = last - 2;
-  const n = br.idx.length, r0 = SPINE_R[2], r1 = SPINE_R[outer];
-  let cursor = 1;
-  const idxs = br.idx.map((_, k) => {
-    const target = r0 + (r1 - r0)*k/(n - 1);
-    let bi = Math.max(2, cursor + 1), bd = Infinity;
-    for(let j = Math.max(2, cursor + 1); j <= outer - (n - 1 - k); j++){
-      const d = Math.abs(SPINE_R[j] - target);
-      if(d < bd){ bd = d; bi = j; }
-    }
-    cursor = bi;
-    return bi;
-  });
-  br.idx.forEach((ti, k) => {
-    const idx  = idxs[k];
-    const prev = k === 0 ? 0 : idxs[k-1];
-    const p = SPINE.pts[idx];
-    SKILLS.push({
-      i: ti, b, k,
-      wx: p[0], wy: p[1],
-      polys: SPINE.polys.slice(prev, idx),          // звенья сети от прошлого узла к этому
-      sx: null, sy: null
-    });
-  });
-});
+   что и у луча, поэтому узел физически привязан к сети. Кольца выбраны
+   по радиусу (см. skillsOf в geometry.js); from/to — звенья спины от
+   прошлого узла к этому. */
+const SKILLS = SCENE.skills.map(s => ({
+  i: s.i, b: s.b, k: s.k,
+  wx: s.wx, wy: s.wy,
+  polys: SPINE.polys.slice(s.from, s.to),
+  sx: null, sy: null
+}));
 const nodeByTier = i => SKILLS.find(s => s.i === i);
 /* габарит всех трёх лучей (с запасом под заголовки ветвей) — по нему сцена
    вписывается в экран и на телефоне, и на десктопе */
-const SKILL_EXT = (() => {
-  let h = 0.1, v = 0.1;
-  SKILLS.forEach(s => {
-    const a = s.b*(Math.PI*2/MAND_S), ca = Math.cos(a), sa = Math.sin(a);
-    const r = Math.hypot(s.wx, s.wy), rr = (r + 0.10)/(r || 1);
-    const x = (s.wx*ca - s.wy*sa)*rr, y = (s.wx*sa + s.wy*ca)*rr;
-    h = Math.max(h, Math.abs(x)); v = Math.max(v, Math.abs(y));
-  });
-  return {h, v};
-})();
+const SKILL_EXT = SCENE.extent;
 
 /* состояние узла: -1 — вне беты (туман), 0 — заблокирован, 1 — доступен, 2 — получен.
    «Вне беты» проверяется первым: узел под туманом не активируется даже с
@@ -971,37 +908,15 @@ const BOOT = {phase:'idle', t0:0, dur:2300};
    Облако точек между ветвями: у каждой вершины сети свой рой
    спутников, разлетающихся в сторону соседнего луча. Чем дальше от
    ветви, тем мельче кружок — поэтому облака соседних лучей смыкаются
-   в середине промежутка, а не обрываются. Строится один раз, рисуется
-   тем же трансформом ×2S, что и сама сеть.
+   в середине промежутка, а не обрываются. Центры кружков по пяти
+   корзинам размера лежат в SCENE (haloOf в geometry.js); рисуется тем
+   же трансформом ×2S, что и сама сеть.
    --------------------------------------------------------------- */
-const HALO = (() => {
-  const rnd = mulberry32(90210);
-  const span = Math.PI/MAND_S;                 // до середины промежутка между лучами
-  const sizes = [0.0072, 0.0054, 0.0039, 0.0027, 0.0017];
-  const buckets = sizes.map(s => ({s, path:new Path2D(), n:0}));
-  const D = MANDALA.groups.length;
-  for(let d=2; d<D; d++){
-    const pts = MANDALA.groups[d].pts;
-    const step = d < 4 ? 1 : 2;                // облако печётся один раз — можно плотно
-    for(let i=0;i<pts.length;i+=step){
-      const r = Math.hypot(pts[i][0], pts[i][1]);
-      if(r < 0.12) continue;
-      const a0 = Math.atan2(pts[i][1], pts[i][0]);
-      const n = 3 + Math.floor(rnd()*3);
-      for(let k=0;k<n;k++){
-        const u  = rnd();                      // 0 — у самой ветви, 1 — середина промежутка
-        const da = (rnd()<0.5?-1:1) * span * u;
-        const rr = r * (0.90 + rnd()*0.24);
-        const x = Math.cos(a0+da)*rr, y = Math.sin(a0+da)*rr;
-        const fall = Math.pow(1-u, 1.6);       // размер падает с удалением от ветви
-        const bi = clamp(Math.round((1-fall)*(sizes.length-1)), 0, sizes.length-1);
-        const b = buckets[bi], rad = b.s;
-        b.path.moveTo(x+rad, y); b.path.arc(x, y, rad, 0, Math.PI*2); b.n++;
-      }
-    }
-  }
-  return buckets;
-})();
+const HALO = SCENE.halo.map(b => {
+  const path = new Path2D(), p = b.pts, rad = b.s;
+  for(let k=0;k<p.length;k+=2){ path.moveTo(p[k]+rad, p[k+1]); path.arc(p[k], p[k+1], rad, 0, Math.PI*2); }
+  return {s: rad, path, n: p.length/2};
+});
 
 /* ---------------------------------------------------------------
    Облако точек печётся один раз в offscreen-канву: несколько тысяч
@@ -3131,7 +3046,8 @@ if(QS.get('e2e') === '1'){
     fogAhead: (axis, dir) => fogAhead(axis, dir),
     refs: () => refCount(myUser()),
     claims: () => claims().slice(),
-    boot: () => BOOT.phase
+    boot: () => BOOT.phase,
+    scene: () => SCENE === window.RIZZOMA_SCENE ? 'resource' : 'computed'
   };
 }
 

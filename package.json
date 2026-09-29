@@ -15,6 +15,7 @@
     "typecheck": "npm run typecheck -w @rizzoma/contracts && npm run build -w @rizzoma/contracts && npm run typecheck -w @rizzoma/api",
     "db:migrate": "npm run db:migrate -w @rizzoma/api",
     "handoff": "node tools/context-handoff.mjs",
+    "build:scene": "node tools/build-scene-data.mjs",
     "test": "node --test tests/*.test.mjs",
     "test:e2e": "playwright test",
     "test:all": "npm test && npm run test:e2e"
