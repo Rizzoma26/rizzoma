@@ -88,7 +88,7 @@ services:
       ADMIN_TG_IDS: "${ADMIN_TG_IDS:-}"
       CHANNEL_ID: "${CHANNEL_ID:-}"
       DISCUSSION_ID: "${DISCUSSION_ID:-}"
-      BETA_OPEN: "${BETA_OPEN:-}"
+      BETA_OPEN: "${BETA_OPEN:?Set BETA_OPEN - beta tier indexes of this contour, see docs/beta-config.md}"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s

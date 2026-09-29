@@ -39,7 +39,7 @@ window.Telegram = { WebApp: {
 export async function open(page, opts = {}){
   const cfg = Object.assign({
     bot:'', app:'', apiBase:'', crewDemo:true,
-    prices:{std:null, vip:null}, betaOpen:null, admins:[], qaButton:true
+    prices:{std:null, vip:null}, admins:[], qaButton:true
   }, opts.config || {});
 
   await page.route('**/telegram-web-app.js', route => route.fulfill({

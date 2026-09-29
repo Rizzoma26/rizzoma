@@ -8,10 +8,11 @@
      4) /api/invoice — счёт на оплату (сумму считает сервер, не клиент);
      5) successful_payment — единственное место, где засчитывается узел;
      6) /api/friends — вкладка «Свои»;
-     7) /api/admin/* — управление бетой, только для ADMIN_TG_IDS.
+     7) /api/admin/* — воронка тестеров и отзыв доступа, только для ADMIN_TG_IDS.
 
    Профиль и регистрация участника сохраняются через registration API.
-   Счета, оплаты, баллы, betaOpen и отзыв доступа хранятся в PostgreSQL.
+   Счета, оплаты, баллы и отзыв доступа хранятся в PostgreSQL.
+   Туман беты (betaOpen) — конфигурация контура: BETA_OPEN, bot/beta-config.js.
    Map ниже используется только в автономном режиме существующих тестов.
    ⚠ Telegram НЕ отдаёт адресную книгу ни боту, ни Mini App. Граф строится
      только из переходов по реферальным ссылкам.
@@ -93,11 +94,14 @@ const users = new Map();   // tgId -> {id,name,username,photo,code,invitedBy,pai
 const codes = new Map();   // code -> tgId
 const payments = [];       // журнал платежей теста (последние 200)
 /* Бета контура: список открытых узлов из BETA_OPEN (bot/beta-config.js).
-   Неверное значение останавливает запуск — проверка в блоке isEntry ниже. */
+   Меняется вместе с релизом, записи во время работы нет. Для dev и prod
+   переменная обязательна; неверное значение останавливает запуск — проверка
+   в блоке isEntry ниже. null бывает только у модуля, импортированного
+   тестами без BETA_OPEN: процесс с такой настройкой не стартует. */
 const BETA = loadBetaConfig(process.env, {
-  tierCount: ECON.TIERS.length, defaultOpen: ECON.BETA_OPEN, required: false
+  tierCount: ECON.TIERS.length, defaultOpen: ECON.BETA_OPEN, required: !!APP_ENV
 });
-let betaOpen = BETA.ok ? [...BETA.open] : ECON.BETA_OPEN.slice();
+const betaOpen = BETA.ok ? BETA.open : null;
 
 /* Баллы за канал живут отдельно от users: реакцию может поставить человек,
    который приложение ни разу не открывал. Заводить ему узел дерева и
@@ -521,7 +525,7 @@ app.post('/api/state', asyncRoute(async (req, res) => {
   res.json({
     code: u.code, paid: !!u.paid, revoked: !!u.revoked,
     refs: refsOf(u), invitedBy: u.invitedBy || null,
-    betaOpen: STORE ? await STORE.beta(betaOpen) : betaOpen,
+    betaOpen,
     prices: PRICES, currency: CURRENCY,
     payments: PROVIDER_TOKEN ? 'on' : 'off'
   });
@@ -637,7 +641,7 @@ app.post('/api/friends', asyncRoute(async (req, res) => {
 /* Воронка тестеров + журнал платежей + текущий туман. */
 app.post('/api/admin/overview', asyncRoute(async (req, res) => {
   const tg = adminAuth(req, res); if(!tg) return;
-  if(STORE) return res.json({ok:true, ...await STORE.overview(betaOpen)});
+  if(STORE) return res.json({ok:true, betaOpen, ...await STORE.overview()});
   const testers = [...users.values()]
     .sort((a, b) => b.ts - a.ts)
     .map(u => ({
@@ -653,17 +657,6 @@ app.post('/api/admin/overview', asyncRoute(async (req, res) => {
       revoked: testers.filter(t => t.revoked).length
     }
   });
-}));
-
-/* Туман на лету: какие узлы видит вся бета. Без деплоя. */
-app.post('/api/admin/beta', asyncRoute(async (req, res) => {
-  const tg = adminAuth(req, res); if(!tg) return;
-  const list = Array.isArray(req.body.betaOpen) ? req.body.betaOpen : null;
-  if(!list) return res.status(400).json({ error: 'betaOpen: нужен массив индексов' });
-  const clean = [...new Set(list.map(Number).filter(n => Number.isInteger(n) && n >= 0 && n < ECON.TIERS.length))];
-  const nextOpen = clean.sort((a, b) => a - b);
-  betaOpen = STORE ? await STORE.setBeta(nextOpen, tg.id) : nextOpen;
-  res.json({ ok: true, betaOpen });
 }));
 
 /* Отзыв доступа тестера: счёт ему больше не выставляется. */
@@ -729,7 +722,6 @@ if(isEntry){
     process.exit(1);
   }
   await STORE.ready();
-  await STORE.beta(betaOpen);
   app.listen(PORT, () => console.log(`API на :${PORT}`));
   /* Ошибка long polling останавливает процесс: оркестратор перезапустит его. */
   bot.start({ allowed_updates: ALLOWED_UPDATES })

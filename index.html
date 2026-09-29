@@ -434,16 +434,6 @@ html.reduce .boot__hint{opacity:.7;animation:none}
 .adm__skill button{border:1px solid var(--line-strong);padding:7px 2px;
   font-family:var(--f-mono);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}
 .adm__skill button:hover{border-color:var(--accent-toxic);color:var(--accent-toxic)}
-/* туман: переключатели «в бете / закрыто» */
-.adm__fog{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:5px}
-.fogsw{border:1px solid var(--line-strong);padding:8px 6px;text-align:left;background:var(--bg-sunken)}
-.fogsw b{display:block;font-family:var(--f-display);font-size:11.5px;text-transform:uppercase;
-  letter-spacing:-0.01em;color:var(--ink-muted)}
-.fogsw span{display:block;margin-top:3px;font-family:var(--f-mono);font-size:8.5px;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--accent-secondary)}
-.fogsw[aria-pressed="true"]{border-color:rgba(182,255,60,.45)}
-.fogsw[aria-pressed="true"] b{color:var(--ink)}
-.fogsw[aria-pressed="true"] span{color:var(--accent-toxic)}
 /* воронка тестеров */
 .adm__t{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;
   border:1px solid var(--line);padding:8px 9px;margin-top:5px}
@@ -584,7 +574,7 @@ html.tg.no-back .sheet__close{display:grid}
    Всё через isVersionAtLeast — на старых клиентах молча деградирует.
    ============================================================ */
 const CFG = Object.assign({bot:'', app:'', apiBase:'', crewDemo:true, qaButton:false,
-                           prices:{std:null, vip:null}, event:{}, betaOpen:null, admins:[],
+                           prices:{std:null, vip:null}, event:{}, admins:[],
                            panel:true},
                           window.RIZZOMA_CONFIG || {});
 const API = CFG.apiBase ? CFG.apiBase.replace(/\/+$/,'') : '';
@@ -737,11 +727,10 @@ const EVENT_LINE = (CFG.event && CFG.event.line) ||
    VIP-привилегию (ГЛУБИНА). Остальные узлы остаются на сцене, но
    закрыты туманом: это «вне беты», а не «не хватает рефералов» —
    в UI это два разных состояния и два разных текста.
-   Набор правится админкой на лету и переживает перезагрузку. */
-let betaOpen = (() => {
-  const base = Array.isArray(CFG.betaOpen) ? CFG.betaOpen : ECON.BETA_OPEN;
-  return stateRepo.loadBetaOpen(base);
-})();
+   Набор задаёт сервер (BETA_OPEN контура, меняется деплоем) и присылает
+   в /api/state. До ответа — последний кэш, без него — economy.js.
+   Публичный config.js на туман не влияет. */
+let betaOpen = stateRepo.loadBetaOpen(ECON.BETA_OPEN);
 const inBeta  = i => betaOpen.has(i);
 const fogged  = i => !inBeta(i);
 function setBetaOpen(list){
@@ -2900,19 +2889,6 @@ async function betaSync(){
   }
   if(!$('#admHost').hidden){ renderAdmin(); renderAll(); }
 }
-/* туман правится на лету: локально всегда, на сервере — если доступ подтверждён */
-async function betaToggle(i){
-  const list = betaOpenList();
-  const k = list.indexOf(i);
-  if(k >= 0) list.splice(k, 1); else list.push(i);
-  setBetaOpen(list);
-  logEvent(k >= 0 ? 'fog·closed' : 'fog·opened', TIERS[i].skill);
-  renderAll(); renderAdmin();
-  if(betaAdmin){
-    const j = await betaApi('/api/admin/beta', {betaOpen: betaOpenList()});
-    if(!j || j.denied) toast('Локально сохранено, сервер не принял', true);
-  }
-}
 function rawState(){
   return JSON.stringify({
     [K_DB]:    (() => { try { return JSON.parse(ls.get(K_DB) || 'null'); } catch(e){ return null; } })(),
@@ -2924,12 +2900,8 @@ function rawState(){
 function renderAdmin(){
   const u = myUser(), c = refCount(u);
 
-  /* --- туман: что открыто тестерам прямо сейчас --- */
-  const fogGrid = TIERS.map((t, i) => {
-    const open = inBeta(i);
-    return `<button class="fogsw" data-adm="fog" data-i="${i}" aria-pressed="${open}">
-      <b>${esc(t.skill)}</b><span>${t.n} · ${open ? 'в бете' : 'туман'}</span></button>`;
-  }).join('');
+  /* --- туман: только чтение, список задаёт сервер --- */
+  const fogOpen = betaOpenList().map(i => esc(TIERS[i].skill)).join(' · ') || '—';
 
   /* --- живые данные беты: только с подтверждённым доступом --- */
   const testers = (betaAdmin && betaData && Array.isArray(betaData.testers)) ? betaData.testers : null;
@@ -2964,13 +2936,14 @@ function renderAdmin(){
     <h3 id="admTitle" style="font-size:24px">БЕТА / QA</h3>
     <div class="adm">
       <div class="adm__warn">Скрыто от тестеров · ${betaAdmin
-        ? 'доступ подтверждён бэкендом: правки тумана видят все'
+        ? 'доступ подтверждён бэкендом'
         : 'локальный режим: правки видит только этот браузер'}</div>
 
       <section>
         <h4>Туман · что открыто в бете</h4>
-        <div class="adm__fog">${fogGrid}</div>
-        <div class="mono muted" style="margin-top:8px">Открыто: ${betaOpenList().length} из ${TIERS.length}</div>
+        <div class="mono" id="admFog">${fogOpen}</div>
+        <div class="mono muted" style="margin-top:8px">Открыто: ${betaOpenList().length} из ${TIERS.length} ·
+          задаёт сервер (BETA_OPEN контура), меняется деплоем</div>
       </section>
 
       <section>
@@ -3058,7 +3031,6 @@ $('#admSheet').addEventListener('click', e => {
   const ensureMe = () => { let code = me(); if(!code){ code = newCode(); ensureUser(code,{}); setMe(code); } return code; };
 
   /* ---------- управление бетой ---------- */
-  if(act === 'fog'){ betaToggle(i); return; }
   if(act === 'betasync'){ betaSync(); return; }
   if(act === 'revoke' || act === 'allow'){
     betaApi('/api/admin/tester', {id: b.dataset.id, action: act}).then(j => {

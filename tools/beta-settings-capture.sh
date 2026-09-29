@@ -34,8 +34,12 @@ if [ -n "${COMPOSE_PROJECT_NAME:-}" ] || grep -q '^COMPOSE_PROJECT_NAME=' "$ENVF
   exit 1
 fi
 
+# docker-compose.yml требует BETA_OPEN, а до снимка его в env может не быть.
+# Заглушка нужна только для подстановки в файл: ps и exec контейнеры не
+# пересоздают и значение никуда не передают.
 compose() {
-  docker compose --project-directory "$ROOT" -f "$ROOT/docker-compose.yml" --env-file "$ENVFILE" "$@"
+  BETA_OPEN=${BETA_OPEN:-0} docker compose --project-directory "$ROOT" \
+    -f "$ROOT/docker-compose.yml" --env-file "$ENVFILE" "$@"
 }
 if ! compose ps --status running --services 2>/dev/null | grep -qx postgres; then
   echo "контур rizzoma-$APP_ENV: postgres не запущен — эффективное значение не измерено" >&2

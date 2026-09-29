@@ -10,7 +10,6 @@ const number = value => Number(value || 0);
 
 export class PostgresBotStore {
   constructor(connectionString) {
-    this.betaInitialization = null;
     this.pool = new Pool({
       connectionString,
       max: 5,
@@ -166,25 +165,6 @@ export class PostgresBotStore {
     }));
   }
 
-  async beta(defaultOpen) {
-    if (!this.betaInitialization) {
-      this.betaInitialization = this.pool.query(`INSERT INTO beta_settings (id, beta_open)
-        VALUES (1, $1::smallint[]) ON CONFLICT (id) DO NOTHING`, [defaultOpen])
-        .catch(error => { this.betaInitialization = null; throw error; });
-    }
-    await this.betaInitialization;
-    const result = await this.pool.query('SELECT beta_open FROM beta_settings WHERE id = 1');
-    return result.rows[0].beta_open.map(Number);
-  }
-
-  async setBeta(betaOpen, adminTelegramId) {
-    const result = await this.pool.query(`UPDATE beta_settings SET beta_open = $1::smallint[],
-      updated_by_telegram_user_id = $2, updated_at = now() WHERE id = 1
-      RETURNING beta_open`, [betaOpen, adminTelegramId]);
-    if (!result.rowCount) throw new Error('Beta settings were not initialized');
-    return result.rows[0].beta_open.map(Number);
-  }
-
   async setRevoked(telegramId, revoked) {
     const result = await this.pool.query(`UPDATE participant_registrations r
       SET access_revoked_at = CASE WHEN $2::boolean THEN coalesce(r.access_revoked_at, now()) ELSE NULL END,
@@ -194,8 +174,7 @@ export class PostgresBotStore {
     return !!result.rowCount;
   }
 
-  async overview(defaultOpen) {
-    const betaOpen = await this.beta(defaultOpen);
+  async overview() {
     const testers = await this.pool.query(`
       SELECT u.telegram_user_id::text AS id, concat_ws(' ', u.first_name, u.last_name) AS name,
              coalesce(u.username, '') AS username, r.referral_code AS code,
@@ -223,7 +202,7 @@ export class PostgresBotStore {
       paid: row.paid, refs: number(row.refs), ts: number(row.ts)
     }));
     return {
-      betaOpen, testers: rows,
+      testers: rows,
       payments: payments.rows.map(row => ({...row, ts: number(row.ts)})),
       totals: {
         testers: rows.length,

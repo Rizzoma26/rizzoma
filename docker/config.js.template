@@ -13,7 +13,6 @@ window.RIZZOMA_CONFIG = {
     title: 'RIZZOMA',
     line: 'Следующий ивент · дата не объявлена · Санкт-Петербург · 18+'
   },
-  betaOpen: null,
   panel: '${QA_ENABLED}' === 'true' && RZ_ADMIN_LINK,
   qaButton: '${QA_ENABLED}' === 'true' && RZ_ADMIN_LINK,
   admins: []

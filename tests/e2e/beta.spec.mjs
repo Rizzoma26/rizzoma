@@ -225,14 +225,59 @@ test.describe('доступ к бета-админке', () => {
     await expect(page.locator('#qaBtn')).toBeVisible();
   });
 
-  test('туман правится из панели на лету', async ({page}) => {
+  test('туман в панели только для чтения: переключателя нет, список виден', async ({page}) => {
     await open(page);
     await boot(page);
     expect(await page.evaluate(() => window.__RZ.beta())).toEqual([0,1,3,4]);
 
     await page.locator('#qaBtn').click();
-    await page.locator('[data-adm="fog"][data-i="2"]').click();        // открыли КАПСУЛУ
-    expect(await page.evaluate(() => window.__RZ.beta())).toContain(2);
-    expect(await page.evaluate(() => window.__RZ.node(2).st)).not.toBe(-1);
+    await expect(page.locator('#admSheet')).toContainText('Туман');
+    await expect(page.locator('[data-adm="fog"]')).toHaveCount(0);
+    await expect(page.locator('#admFog')).toHaveText('ПРОБИТИЕ · ПРОХОД · ОБХОД · ГЛУБИНА');
+    await expect(page.locator('#admSheet')).toContainText('меняется деплоем');
+  });
+});
+
+test.describe('туман задаёт сервер', () => {
+  const API = 'http://api.test';
+  const state = open => JSON.stringify({code:'SRV123', paid:false, revoked:false, refs:0,
+    invitedBy:null, betaOpen:open, prices:{std:null, vip:null}, currency:'RUB', payments:'off'});
+
+  /* Поднять приложение «внутри Telegram» с заданным ответом /api/state.
+     Возвращает промис «сервер ответил» — чтобы проверить кадр до ответа. */
+  async function withState(page, body, {delay = 0, cache} = {}){
+    let release;
+    const answered = new Promise(r => { release = r; });
+    await page.route('**/api/visit',   r => r.fulfill({contentType:'application/json', body:'{"ok":true}'}));
+    await page.route('**/api/friends', r => r.fulfill({contentType:'application/json', body:'{"linked":true,"friends":[]}'}));
+    await page.route('**/api/engagement', r => r.fulfill({status:503, contentType:'application/json', body:'{}'}));
+    await page.route('**/api/state', async r => {
+      if(delay) await new Promise(t => setTimeout(t, delay));
+      await r.fulfill({contentType:'application/json', body});
+      release();
+    });
+    if(cache) await page.addInitScript(v => localStorage.setItem('rizzoma_beta', v), JSON.stringify(cache));
+    await open(page, {tg: 5002, config:{apiBase: API, crewDemo:false}});
+    return {answered};
+  }
+
+  test('список из /api/state применяется и попадает в кэш', async ({page}) => {
+    const {answered} = await withState(page, state([0,1,2,3,4]));
+    await answered;
+    await expect.poll(() => page.evaluate(() => window.__RZ.beta())).toEqual([0,1,2,3,4]);
+    expect(await page.evaluate(() => localStorage.getItem('rizzoma_beta'))).toBe('[0,1,2,3,4]');
+  });
+
+  test('betaOpen в config.js больше не переопределяет туман', async ({page}) => {
+    await open(page, {config:{betaOpen:[2, 5]}});
+    expect(await page.evaluate(() => window.__RZ.beta())).toEqual([0,1,3,4]);
+  });
+
+  test('первый кадр до ответа сервера — последний кэш, затем серверный список', async ({page}) => {
+    const {answered} = await withState(page, state([0,1,3]), {delay: 1500, cache: [0,1,3,4,7]});
+    expect(await page.evaluate(() => window.__RZ.beta())).toEqual([0,1,3,4,7]);
+    await answered;
+    await expect.poll(() => page.evaluate(() => window.__RZ.beta())).toEqual([0,1,3]);
+    expect(await page.evaluate(() => localStorage.getItem('rizzoma_beta'))).toBe('[0,1,3]');
   });
 });
