@@ -71,6 +71,12 @@ echo "QA_ENABLED=$(value_of QA_ENABLED) ADMIN_TG_IDS=$(status ADMIN_TG_IDS)"
 echo "env BETA_OPEN=$ENV_SHOWN"
 echo "economy.js default=$DEFAULT"
 
+case ",$(field migrations)," in
+  *,003_drop_beta_settings.sql,*)
+    echo "beta_settings удалена миграцией 003: снимать нечего, список контура — BETA_OPEN в env"
+    exit 4 ;;
+esac
+
 if [ "$(field table)" = present ] && [ -n "$(printf '%s\n' "$SNAPSHOT" | grep '^db_beta_open=')" ]; then
   RAW=$(field db_beta_open); NORM=$(field db_beta_open_normalized)
   echo "db beta_open=$RAW changed_by_admin=$(field changed_by_admin) updated_at=$(field updated_at)"

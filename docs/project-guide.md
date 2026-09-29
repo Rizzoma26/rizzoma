@@ -47,8 +47,9 @@ flowchart LR
 
 ## Источники истины
 
-- PostgreSQL хранит серверную идентичность и сессии, счета и квитанции, награды активности
-  и общие настройки беты.
+- PostgreSQL хранит серверную идентичность и сессии, счета и квитанции, награды активности.
+  Список открытых узлов беты — настройка контура `BETA_OPEN` (`bot/beta-config.js`),
+  меняется деплоем: [перенос из `beta_settings`](beta-config.md).
 - Клиентские ключи `rizzoma_mock_db`, `rizzoma_me`, `rizzoma_attribution`,
   `rizzoma_claims`, `rizzoma_beta` и `rizzoma_engagement` обслуживают демо, offline-показ
   и кэш. Подробно: [модель данных и повторных операций](data-and-idempotency.md).
