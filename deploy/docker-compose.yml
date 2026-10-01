@@ -1,0 +1,27 @@
+# Лежит на сервере в /opt/rizzoma рядом с .env и config.js; CI копирует его при каждом деплое.
+# DOMAIN задаётся в .env; IMAGE_TAG деплой передаёт через окружение (sha коммита).
+services:
+  bot:
+    image: ghcr.io/xtnx/rizzoma-bot:${IMAGE_TAG:-latest}
+    env_file: .env
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/xtnx/rizzoma-web:${IMAGE_TAG:-latest}
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./config.js:/srv/config.js:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - bot
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

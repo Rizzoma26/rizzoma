@@ -1,0 +1,12 @@
+# Бэкенд: бот + API. bot.js берёт экономику из ../economy.js и ../engagement.js,
+# поэтому раскладка внутри образа повторяет репозиторий.
+FROM node:20-alpine
+WORKDIR /app
+COPY bot/package.json bot/package-lock.json bot/
+RUN npm ci --omit=dev --prefix bot && npm cache clean --force
+COPY economy.js engagement.js ./
+COPY bot/bot.js bot/
+ENV NODE_ENV=production PORT=8080
+USER node
+EXPOSE 8080
+CMD ["node", "bot/bot.js"]

@@ -1,0 +1,16 @@
+{$DOMAIN} {
+	encode gzip
+
+	# API бота на том же домене: apiBase в config.js = https://{$DOMAIN}
+	@api path /api/* /health
+	handle @api {
+		reverse_proxy bot:8080
+	}
+
+	handle {
+		root * /srv
+		file_server
+		# WebView Telegram любит кэшировать — пусть всегда сверяется с сервером
+		header Cache-Control "no-cache"
+	}
+}

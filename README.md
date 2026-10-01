@@ -163,6 +163,20 @@ npm start
 
 ---
 
+## Деплой на свой сервер
+
+Пайплайн `.github/workflows/deploy.yml`: после зелёного `tests` на `main` собирает два образа
+(`Dockerfile.bot` — бэкенд, `Dockerfile.web` — Caddy со статикой и HTTPS), пушит их в GHCR
+и по SSH выкатывает на сервер (`docker compose pull && up -d`). Ручной запуск — *Run workflow*.
+
+На сервере в `/opt/rizzoma`: `docker-compose.yml` (копирует CI из `deploy/`), `.env` с секретами
+бэкенда и `DOMAIN`, `config.js` — монтируется поверх файла из образа, правится там же.
+`/api/*` и `/health` Caddy проксирует на бота, поэтому `apiBase` = адрес самой статики.
+
+Секреты репозитория: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`.
+
+---
+
 ## Бета: туман войны
 
 Бета проверяет один сценарий целиком: **пригласил → друг оплатил → тебе узел → узел

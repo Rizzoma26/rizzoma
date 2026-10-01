@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+node_modules
+bot/node_modules
+bot/.env
+.env
+.env.*
+tests
+test-results
+playwright-report
+legacy
+*.md
