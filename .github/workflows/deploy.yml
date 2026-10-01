@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  REGISTRY: ghcr.io/xtnx
+  REGISTRY: ghcr.io/rizzoma26
   SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
   BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
 

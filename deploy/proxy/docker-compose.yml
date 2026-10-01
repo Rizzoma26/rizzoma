@@ -3,7 +3,7 @@
 # Образ один на все окружения: берётся из main.
 services:
   caddy:
-    image: ghcr.io/xtnx/rizzoma-proxy:${IMAGE_TAG:-main}
+    image: ghcr.io/rizzoma26/rizzoma-proxy:${IMAGE_TAG:-main}
     env_file: .env
     ports:
       - "80:80"

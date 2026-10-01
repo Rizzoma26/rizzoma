@@ -3,12 +3,12 @@
 # IMAGE_TAG деплой передаёт через окружение (sha коммита); руками — тег ветки.
 services:
   bot:
-    image: ghcr.io/xtnx/rizzoma-bot:${IMAGE_TAG:-${BRANCH}}
+    image: ghcr.io/rizzoma26/rizzoma-bot:${IMAGE_TAG:-${BRANCH}}
     env_file: .env
     restart: unless-stopped
 
   web:
-    image: ghcr.io/xtnx/rizzoma-web:${IMAGE_TAG:-${BRANCH}}
+    image: ghcr.io/rizzoma26/rizzoma-web:${IMAGE_TAG:-${BRANCH}}
     volumes:
       - ./config.js:/srv/config.js:ro
     networks:
