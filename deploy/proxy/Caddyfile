@@ -1,0 +1,16 @@
+# Домены и DUCKDNS_TOKEN — в /opt/rizzoma/proxy/.env.
+(duckdns) {
+	tls {
+		dns duckdns {env.DUCKDNS_TOKEN}
+	}
+}
+
+{$PROD_DOMAIN} {
+	import duckdns
+	reverse_proxy prod-web:80
+}
+
+{$BETA_DOMAIN} {
+	import duckdns
+	reverse_proxy beta-web:80
+}

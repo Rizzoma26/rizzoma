@@ -1,7 +1,8 @@
-{$DOMAIN} {
+# Внутренний Caddy окружения: статика + API бота. HTTPS снаружи держит deploy/proxy.
+:80 {
 	encode gzip
 
-	# API бота на том же домене: apiBase в config.js = https://{$DOMAIN}
+	# API бота на том же домене: apiBase в config.js = адрес самой статики
 	@api path /api/* /health
 	handle @api {
 		reverse_proxy bot:8080

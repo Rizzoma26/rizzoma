@@ -1,31 +1,40 @@
 name: deploy
 
-# Деплой только того, что прошло тесты: ждём зелёный прогон «tests» на main.
+# Деплой только того, что прошло тесты: ждём зелёный прогон «tests».
+# main → прод, dev → бета. Выкатку делает self-hosted раннер на самом сервере:
+# снаружи по SSH туда не попасть.
 on:
   workflow_run:
     workflows: [tests]
     types: [completed]
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 concurrency:
-  group: deploy
+  group: deploy-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io/xtnx
   SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+  BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
 
 jobs:
   build:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # Только пуши в этот репозиторий: PR из форка тоже порождает workflow_run,
+    # и его код не должен ни попасть в реестр, ни доехать до раннера на сервере.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     strategy:
       matrix:
-        image: [bot, web]
+        image: [bot, web, proxy]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,44 +55,47 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/rizzoma-${{ matrix.image }}:${{ env.SHA }}
-            ${{ env.REGISTRY }}/rizzoma-${{ matrix.image }}:latest
+            ${{ env.REGISTRY }}/rizzoma-${{ matrix.image }}:${{ env.BRANCH }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    if: contains(fromJSON('["main","dev"]'), github.event.workflow_run.head_branch || github.ref_name)
+    runs-on: [self-hosted, rizzoma]
     permissions:
       contents: read
-      packages: read
+    environment: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'prod' || 'beta' }}
+    env:
+      STACK: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'prod' || 'beta' }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.SHA }}
 
-      # DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS — в Secrets репозитория.
-      - name: SSH
+      # Прокси общий: обновляется только с main, бета его не двигает.
+      - name: Прокси
+        if: env.STACK == 'prod'
+        working-directory: /opt/rizzoma/proxy
         run: |
-          install -m 700 -d ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
-          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/id_ed25519
+          install -m 644 "$GITHUB_WORKSPACE/deploy/proxy/docker-compose.yml" docker-compose.yml
+          install -m 644 "$GITHUB_WORKSPACE/deploy/proxy/Caddyfile" Caddyfile
+          export IMAGE_TAG=$SHA
+          docker compose pull -q
+          docker compose up -d
+          docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
 
-      - name: Выкатка
-        env:
-          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Выкатка ${{ env.STACK }}
+        working-directory: /opt/rizzoma/${{ env.STACK }}
         run: |
-          scp deploy/docker-compose.yml "$TARGET:/opt/rizzoma/docker-compose.yml"
-          # Токен живёт только пока идёт этот job — на сервере постоянных кредов нет.
-          echo "$GHCR_TOKEN" | ssh "$TARGET" "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
-          ssh "$TARGET" "cd /opt/rizzoma \
-            && export IMAGE_TAG=$SHA \
-            && docker compose pull \
-            && docker compose up -d --remove-orphans; rc=\$?; \
-            docker logout ghcr.io >/dev/null; docker image prune -f >/dev/null; exit \$rc"
+          install -m 644 "$GITHUB_WORKSPACE/deploy/docker-compose.yml" docker-compose.yml
+          export IMAGE_TAG=$SHA
+          docker compose pull -q
+          docker compose up -d --remove-orphans
+          docker image prune -f >/dev/null
 
       - name: Проверка
+        working-directory: /opt/rizzoma/${{ env.STACK }}
         run: |
           sleep 5
-          ssh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "cd /opt/rizzoma && docker compose ps"
+          docker compose ps

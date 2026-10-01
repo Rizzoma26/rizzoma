@@ -165,15 +165,22 @@ npm start
 
 ## Деплой на свой сервер
 
-Пайплайн `.github/workflows/deploy.yml`: после зелёного `tests` на `main` собирает два образа
-(`Dockerfile.bot` — бэкенд, `Dockerfile.web` — Caddy со статикой и HTTPS), пушит их в GHCR
-и по SSH выкатывает на сервер (`docker compose pull && up -d`). Ручной запуск — *Run workflow*.
+Два окружения на одном сервере: `main` → прод, `dev` → бета (у беты свой бот).
 
-На сервере в `/opt/rizzoma`: `docker-compose.yml` (копирует CI из `deploy/`), `.env` с секретами
-бэкенда и `DOMAIN`, `config.js` — монтируется поверх файла из образа, правится там же.
-`/api/*` и `/health` Caddy проксирует на бота, поэтому `apiBase` = адрес самой статики.
+Пайплайн `.github/workflows/deploy.yml`: после зелёного `tests` на `main`/`dev` собирает образы
+в GHCR (`Dockerfile.bot` — бэкенд, `Dockerfile.web` — статика, `Dockerfile.proxy` — общий Caddy
+с TLS), затем self-hosted раннер на самом сервере (метка `rizzoma`) делает
+`docker compose pull && up -d`. Снаружи по SSH сервер недоступен — поэтому раннер, а не SSH.
+Ручной запуск — *Run workflow*.
 
-Секреты репозитория: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`.
+На сервере `/opt/rizzoma`:
+
+| Каталог | Что там |
+|---|---|
+| `proxy/` | общий вход на 80/443: домены, `DUCKDNS_TOKEN` в `.env`. Сертификаты — через DNS-01 (DuckDNS): HTTP-проверка Let's Encrypt снаружи до сервера не доходит |
+| `prod/`, `beta/` | `docker-compose.yml` (копирует CI из `deploy/`), `.env` бэкенда + `STACK`/`BRANCH`, `config.js` — монтируется поверх файла из образа, правится там же |
+
+`/api/*` и `/health` проксируются на бота окружения, поэтому `apiBase` = адрес самой статики.
 
 ---
 

@@ -1,27 +1,24 @@
-# Лежит на сервере в /opt/rizzoma рядом с .env и config.js; CI копирует его при каждом деплое.
-# DOMAIN задаётся в .env; IMAGE_TAG деплой передаёт через окружение (sha коммита).
+# Одно окружение: /opt/rizzoma/prod (ветка main) или /opt/rizzoma/beta (ветка dev).
+# Рядом лежат .env (секреты бота, STACK, BRANCH) и config.js. Файл копирует CI.
+# IMAGE_TAG деплой передаёт через окружение (sha коммита); руками — тег ветки.
 services:
   bot:
-    image: ghcr.io/xtnx/rizzoma-bot:${IMAGE_TAG:-latest}
+    image: ghcr.io/xtnx/rizzoma-bot:${IMAGE_TAG:-${BRANCH}}
     env_file: .env
     restart: unless-stopped
 
   web:
-    image: ghcr.io/xtnx/rizzoma-web:${IMAGE_TAG:-latest}
-    environment:
-      DOMAIN: ${DOMAIN}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+    image: ghcr.io/xtnx/rizzoma-web:${IMAGE_TAG:-${BRANCH}}
     volumes:
       - ./config.js:/srv/config.js:ro
-      - caddy_data:/data
-      - caddy_config:/config
+    networks:
+      default:
+      edge:
+        aliases: ["${STACK}-web"]
     depends_on:
       - bot
     restart: unless-stopped
 
-volumes:
-  caddy_data:
-  caddy_config:
+networks:
+  edge:
+    external: true

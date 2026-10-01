@@ -1,4 +1,4 @@
-# Статика + HTTPS. Тот же набор файлов, что README велит класть на хостинг.
+# Статика окружения. Тот же набор файлов, что README велит класть на хостинг.
 # config.js на сервере монтируется поверх — он правится там, без пересборки.
 FROM caddy:2-alpine
 COPY index.html economy.js engagement.js config.js logo.svg /srv/

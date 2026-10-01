@@ -1,0 +1,25 @@
+# Общий вход на 80/443 для всех окружений: TLS (Let's Encrypt) и маршрутизация по домену.
+# /opt/rizzoma/proxy, домены и DUCKDNS_TOKEN — в .env рядом. Окружения цепляются к сети edge.
+# Образ один на все окружения: берётся из main.
+services:
+  caddy:
+    image: ghcr.io/xtnx/rizzoma-proxy:${IMAGE_TAG:-main}
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+    restart: unless-stopped
+
+networks:
+  edge:
+    name: edge
+
+volumes:
+  caddy_data:
+  caddy_config:
