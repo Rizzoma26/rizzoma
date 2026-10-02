@@ -165,20 +165,30 @@ npm start
 
 ## Деплой на свой сервер
 
-Два окружения на одном сервере: `main` → прод, `dev` → бета (у беты свой бот).
+Три окружения на одном сервере, у каждой ветки своё: `main` → прод (`rizzoma.ru`),
+`qa` → `qa.rizzoma.ru`, `dev` → `dev.rizzoma.ru`. У каждого окружения свой бот.
 
-Пайплайн `.github/workflows/deploy.yml`: после зелёного `tests` на `main`/`dev` собирает образы
-в GHCR (`Dockerfile.bot` — бэкенд, `Dockerfile.web` — статика, `Dockerfile.proxy` — общий Caddy
-с TLS), затем self-hosted раннер на самом сервере (метка `rizzoma`) делает
-`docker compose pull && up -d`. Снаружи по SSH сервер недоступен — поэтому раннер, а не SSH.
-Ручной запуск — *Run workflow*.
+**Сборка** — `.github/workflows/build.yml`: после зелёного `tests` на `main`/`qa`/`dev` собирает
+образы в GHCR (`Dockerfile.bot` — бэкенд, `Dockerfile.web` — статика, `Dockerfile.proxy` — общий
+Caddy + lego) с тегами `<sha>` и `<ветка>`.
+
+**Выкатка** — сам сервер: снаружи до него не достучаться (ни SSH из GitHub Actions, ни
+self-hosted раннер — сервер не видит их API). Таймер `rizzoma-deploy.timer` раз в минуту делает
+`git fetch` и выкатывает коммит ветки, как только для него появились образы — то есть только то,
+что прошло тесты. Лог: `journalctl -u rizzoma-deploy`.
+
+**HTTPS** — wildcard-сертификат `rizzoma.ru` + `*.rizzoma.ru` выпускает lego через DNS-API Timeweb
+(`rizzoma-certs.timer`, продление за 30 дней до истечения): HTTP-проверка Let's Encrypt из-за
+рубежа до сервера не доходит.
 
 На сервере `/opt/rizzoma`:
 
-| Каталог | Что там |
+| Путь | Что там |
 |---|---|
-| `proxy/` | общий вход на 80/443: домены, `DUCKDNS_TOKEN` в `.env`. Сертификаты — через DNS-01 (DuckDNS): HTTP-проверка Let's Encrypt снаружи до сервера не доходит |
-| `prod/`, `beta/` | `docker-compose.yml` (копирует CI из `deploy/`), `.env` бэкенда + `STACK`/`BRANCH`, `config.js` — монтируется поверх файла из образа, правится там же |
+| `bin/`, `/etc/systemd/system/rizzoma-*` | скрипты и юниты из `deploy/server/` (ставятся руками) |
+| `src/` | клон репозитория, из него берутся compose-файлы нужного коммита |
+| `proxy/` | общий вход на 80/443: `.env` (домены, `TIMEWEBCLOUD_AUTH_TOKEN`), `conf/`, `certs/` |
+| `prod/`, `qa/`, `dev/` | `.env` бэкенда + `STACK`/`BRANCH`, `public/config.js` — правится там же, без пересборки |
 
 `/api/*` и `/health` проксируются на бота окружения, поэтому `apiBase` = адрес самой статики.
 

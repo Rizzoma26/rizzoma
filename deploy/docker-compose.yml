@@ -1,6 +1,6 @@
-# Одно окружение: /opt/rizzoma/prod (ветка main) или /opt/rizzoma/beta (ветка dev).
-# Рядом лежат .env (секреты бота, STACK, BRANCH) и config.js. Файл копирует CI.
-# IMAGE_TAG деплой передаёт через окружение (sha коммита); руками — тег ветки.
+# Одно окружение: /opt/rizzoma/{prod,qa,dev}. Рядом .env (секреты бота, STACK, BRANCH)
+# и public/config.js. Файл кладёт deploy/server/rizzoma-deploy.sh из нужного коммита.
+# IMAGE_TAG — sha коммита (передаёт деплой); руками без него берётся тег ветки.
 services:
   bot:
     image: ghcr.io/rizzoma26/rizzoma-bot:${IMAGE_TAG:-${BRANCH}}
@@ -10,7 +10,7 @@ services:
   web:
     image: ghcr.io/rizzoma26/rizzoma-web:${IMAGE_TAG:-${BRANCH}}
     volumes:
-      - ./config.js:/srv/config.js:ro
+      - ./public:/conf:ro
     networks:
       default:
       edge:

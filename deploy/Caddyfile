@@ -8,6 +8,13 @@
 		reverse_proxy bot:8080
 	}
 
+	# config.js у каждого окружения свой — лежит на сервере, правится там
+	handle /config.js {
+		root * /conf
+		file_server
+		header Cache-Control "no-cache"
+	}
+
 	handle {
 		root * /srv
 		file_server

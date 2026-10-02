@@ -1,7 +1,6 @@
-# Общий вход: Caddy с DNS-плагином DuckDNS. Сертификат выпускается через TXT-запись
-# (DNS-01): HTTP-проверка Let's Encrypt снаружи до сервера не доходит.
-FROM caddy:2-builder AS build
-RUN xcaddy build --with github.com/caddy-dns/duckdns
+# Общий вход: Caddy + lego. Сертификат *.домен выпускает lego через DNS-API Timeweb
+# (DNS-01): HTTP-проверка Let's Encrypt из-за рубежа до сервера не доходит.
+FROM goacme/lego:v4 AS lego
 
 FROM caddy:2-alpine
-COPY --from=build /usr/bin/caddy /usr/bin/caddy
+COPY --from=lego /lego /usr/bin/lego

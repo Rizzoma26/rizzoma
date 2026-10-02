@@ -1,0 +1,9 @@
+[Unit]
+Description=RIZZOMA: выкатка готовых образов (main/qa/dev)
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/opt/rizzoma/bin/rizzoma-deploy.sh

@@ -1,16 +1,20 @@
-# Домены и DUCKDNS_TOKEN — в /opt/rizzoma/proxy/.env.
-(duckdns) {
-	tls {
-		dns duckdns {env.DUCKDNS_TOKEN}
-	}
+# Домены — в /opt/rizzoma/proxy/.env. Сертификат подставляет tls.caddy:
+# до первого выпуска там самоподписанный (tls internal), потом файлы lego.
+(cert) {
+	import /etc/caddy/tls.caddy
 }
 
 {$PROD_DOMAIN} {
-	import duckdns
+	import cert
 	reverse_proxy prod-web:80
 }
 
-{$BETA_DOMAIN} {
-	import duckdns
-	reverse_proxy beta-web:80
+{$QA_DOMAIN} {
+	import cert
+	reverse_proxy qa-web:80
+}
+
+{$DEV_DOMAIN} {
+	import cert
+	reverse_proxy dev-web:80
 }

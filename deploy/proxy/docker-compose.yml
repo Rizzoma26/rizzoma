@@ -1,6 +1,5 @@
-# Общий вход на 80/443 для всех окружений: TLS (Let's Encrypt) и маршрутизация по домену.
-# /opt/rizzoma/proxy, домены и DUCKDNS_TOKEN — в .env рядом. Окружения цепляются к сети edge.
-# Образ один на все окружения: берётся из main.
+# Общий вход на 80/443 для всех окружений: TLS и маршрутизация по домену.
+# /opt/rizzoma/proxy: .env (домены, токен Timeweb), conf/ (Caddyfile, tls.caddy), certs/ (lego).
 services:
   caddy:
     image: ghcr.io/rizzoma26/rizzoma-proxy:${IMAGE_TAG:-main}
@@ -10,15 +9,25 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./conf:/etc/caddy:ro
+      - ./certs:/certs:ro
       - caddy_data:/data
       - caddy_config:/config
     networks: [edge]
     restart: unless-stopped
 
+  # Разовый запуск из rizzoma-certs.sh: docker compose run --rm certs …
+  certs:
+    image: ghcr.io/rizzoma26/rizzoma-proxy:${IMAGE_TAG:-main}
+    profiles: [tools]
+    env_file: .env
+    entrypoint: ["lego"]
+    volumes:
+      - ./certs:/certs
+
 networks:
   edge:
-    name: edge
+    external: true
 
 volumes:
   caddy_data:
