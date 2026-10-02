@@ -20,6 +20,9 @@ services:
   certs:
     image: ghcr.io/rizzoma26/rizzoma-proxy:${IMAGE_TAG:-main}
     profiles: [tools]
+    # Файлы lego — от deploy: rizzoma-certs.sh (тоже от deploy) должен видеть
+    # готовый сертификат, иначе вместо продления будет каждый раз выпускать новый.
+    user: "1000:1000"
     env_file: .env
     entrypoint: ["lego"]
     volumes:
