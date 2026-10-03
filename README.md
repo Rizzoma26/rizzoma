@@ -185,12 +185,47 @@ self-hosted раннер — сервер не видит их API). Тайме�
 
 | Путь | Что там |
 |---|---|
-| `bin/`, `/etc/systemd/system/rizzoma-*` | скрипты и юниты из `deploy/server/` (ставятся руками) |
+| `bin/`, `/etc/systemd/system/rizzoma-*` | скрипты и юниты из `deploy/server/` (ставит `install.sh`) |
 | `src/` | клон репозитория, из него берутся compose-файлы нужного коммита |
 | `proxy/` | общий вход на 80/443: `.env` (домены, `TIMEWEBCLOUD_AUTH_TOKEN`), `conf/`, `certs/` |
 | `prod/`, `qa/`, `dev/` | `.env` бэкенда + `STACK`/`BRANCH`, `public/config.js` — правится там же, без пересборки |
 
 `/api/*` и `/health` проксируются на бота окружения, поэтому `apiBase` = адрес самой статики.
+
+---
+
+### Переезд на новый сервер
+
+Всё, что не в git (токены ботов и Timeweb, `config.js` окружений, сертификат, вход в GHCR,
+SSH-ключи), снимается одним архивом; новый сервер поднимается одним скриптом.
+
+1. **Бэкап со старого сервера** (с локальной машины; в архиве секреты — хранить соответственно):
+   ```bash
+   ssh rizzoma /opt/rizzoma/bin/rizzoma-backup.sh > rizzoma-backup-$(date +%F).tgz
+   ```
+2. **Новый сервер**: Ubuntu 24.04, от 2 ГБ RAM, вход по SSH-ключу под root. Скопировать установщик и бэкап:
+   ```bash
+   scp deploy/server/install.sh rizzoma-backup-*.tgz root@НОВЫЙ_IP:/root/
+   ```
+3. **Установка без запуска** — Docker, пользователь `deploy`, `/opt/rizzoma`, таймеры, запрет паролей, секреты из бэкапа:
+   ```bash
+   ssh root@НОВЫЙ_IP 'bash /root/install.sh --restore /root/rizzoma-backup-*.tgz'
+   ```
+4. **Погасить старый** — два бота на одном токене мешают друг другу:
+   ```bash
+   ssh rizzoma 'systemctl disable --now rizzoma-deploy.timer rizzoma-certs.timer; for d in prod qa dev proxy; do (cd /opt/rizzoma/$d && docker compose down); done'
+   ```
+5. **Запустить новый** — выкатит текущие коммиты `main`/`qa`/`dev`:
+   ```bash
+   ssh root@НОВЫЙ_IP 'bash /root/install.sh --start'
+   ```
+6. **DNS**: в Timeweb перевести A-записи `@` и `*` у `rizzoma.ru` на новый IP (TTL 600).
+   Адреса не меняются — в @BotFather и `config.js` ничего править не нужно.
+7. **Проверка**: `https://rizzoma.ru/health`, `qa.`, `dev.`; `/start` в каждом боте.
+   Локально поправить `HostName` у `rizzoma` в `~/.ssh/config`.
+
+Данные ботов живут в памяти и при переезде теряются (как при любом перезапуске).
+Без бэкапа `install.sh` создаст шаблоны `.env`/`config.js` и перечислит, что вписать руками.
 
 ---
 
