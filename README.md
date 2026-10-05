@@ -1,5 +1,17 @@
 # RIZZOMA — Telegram Mini App «дерево узлов»
 
+[![tests](https://github.com/Rizzoma26/rizzoma/actions/workflows/ci.yml/badge.svg)](https://github.com/Rizzoma26/rizzoma/actions/workflows/ci.yml)
+[![deploy](https://github.com/Rizzoma26/rizzoma/actions/workflows/deploy.yml/badge.svg)](https://github.com/Rizzoma26/rizzoma/actions/workflows/deploy.yml)
+
+| Окружение | Ветка | Сайт | Мини-аппа |
+|---|---|---|---|
+| **prod** | `main` | [rizzoma.ru](https://rizzoma.ru/) | [@rizzoma_bot](https://t.me/rizzoma_bot/app) |
+| **qa** | `qa` | [qa.rizzoma.ru](https://qa.rizzoma.ru/) | [@rizzomaraveqa_bot](https://t.me/rizzomaraveqa_bot/rizzomaraveqa) |
+| **dev** | `dev` | [dev.rizzoma.ru](https://dev.rizzoma.ru/) | [@rizzomarave_bot](https://t.me/rizzomarave_bot/rizzomaravedev) |
+
+Пуш в ветку → тесты → выкатка в её окружение за 5–7 минут. Что где выкачено — блок
+**Deployments** справа на странице репозитория. Подробно — [DEPLOY.md](DEPLOY.md).
+
 Приложение на один экран: генеративная сеть вокруг логотипа стала **радиальным деревом
 прокачки**. Скиллы не нарисованы поверх сети — каждый сидит на реальной вершине её клина,
 а глубина ветвления работает как кольцо прокачки. Билеты живут в bottom sheet и доступны
@@ -41,6 +53,7 @@
 | `bot/` | бэкенд: диплинки, реферальный граф, счета на оплату, вебхук `successful_payment`, бета-админка |
 | `tests/` | юнит-тесты экономики и баллов, интеграционные тесты приёма Telegram-апдейтов (`node --test`), e2e на Playwright |
 | `legacy/index.landing.html` | прошлая версия — лендинг со скроллом. Откат = вернуть этот файл на место `index.html` |
+| `Dockerfile.*`, `deploy/`, `.github/workflows/deploy.yml`, `DEPLOY.md` | сборка образов и выкатка на сервер — см. [DEPLOY.md](DEPLOY.md) |
 
 Сборки нет — статика кладётся на хостинг как есть: `index.html`, `economy.js`, `engagement.js`,
 `config.js`, `logo.svg`.
@@ -163,69 +176,13 @@ npm start
 
 ---
 
-## Деплой на свой сервер
+## Деплой и окружения
 
-Три окружения на одном сервере, у каждой ветки своё: `main` → прод (`rizzoma.ru`),
-`qa` → `qa.rizzoma.ru`, `dev` → `dev.rizzoma.ru`. У каждого окружения свой бот.
+Три окружения на одном сервере, у каждой ветки своё (таблица в начале README). Пуш в ветку —
+тесты, сборка, выкатка и проверка `/health` в GitHub Actions; статус — в блоке Deployments.
 
-**Сборка** — `.github/workflows/build.yml`: после зелёного `tests` на `main`/`qa`/`dev` собирает
-образы в GHCR (`Dockerfile.bot` — бэкенд, `Dockerfile.web` — статика, `Dockerfile.proxy` — общий
-Caddy + lego) с тегами `<sha>` и `<ветка>`.
-
-**Выкатка** — сам сервер: снаружи до него не достучаться (ни SSH из GitHub Actions, ни
-self-hosted раннер — сервер не видит их API). Таймер `rizzoma-deploy.timer` раз в минуту делает
-`git fetch` и выкатывает коммит ветки, как только для него появились образы — то есть только то,
-что прошло тесты. Лог: `journalctl -u rizzoma-deploy`.
-
-**HTTPS** — wildcard-сертификат `rizzoma.ru` + `*.rizzoma.ru` выпускает lego через DNS-API Timeweb
-(`rizzoma-certs.timer`, продление за 30 дней до истечения): HTTP-проверка Let's Encrypt из-за
-рубежа до сервера не доходит.
-
-На сервере `/opt/rizzoma`:
-
-| Путь | Что там |
-|---|---|
-| `bin/`, `/etc/systemd/system/rizzoma-*` | скрипты и юниты из `deploy/server/` (ставит `install.sh`) |
-| `src/` | клон репозитория, из него берутся compose-файлы нужного коммита |
-| `proxy/` | общий вход на 80/443: `.env` (домены, `TIMEWEBCLOUD_AUTH_TOKEN`), `conf/`, `certs/` |
-| `prod/`, `qa/`, `dev/` | `.env` бэкенда + `STACK`/`BRANCH`, `public/config.js` — правится там же, без пересборки |
-
-`/api/*` и `/health` проксируются на бота окружения, поэтому `apiBase` = адрес самой статики.
-
----
-
-### Переезд на новый сервер
-
-Всё, что не в git (токены ботов и Timeweb, `config.js` окружений, сертификат, вход в GHCR,
-SSH-ключи), снимается одним архивом; новый сервер поднимается одним скриптом.
-
-1. **Бэкап со старого сервера** (с локальной машины; в архиве секреты — хранить соответственно):
-   ```bash
-   ssh rizzoma /opt/rizzoma/bin/rizzoma-backup.sh > rizzoma-backup-$(date +%F).tgz
-   ```
-2. **Новый сервер**: Ubuntu 24.04, от 2 ГБ RAM, вход по SSH-ключу под root. Скопировать установщик и бэкап:
-   ```bash
-   scp deploy/server/install.sh rizzoma-backup-*.tgz root@НОВЫЙ_IP:/root/
-   ```
-3. **Установка без запуска** — Docker, пользователь `deploy`, `/opt/rizzoma`, таймеры, запрет паролей, секреты из бэкапа:
-   ```bash
-   ssh root@НОВЫЙ_IP 'bash /root/install.sh --restore /root/rizzoma-backup-*.tgz'
-   ```
-4. **Погасить старый** — два бота на одном токене мешают друг другу:
-   ```bash
-   ssh rizzoma 'systemctl disable --now rizzoma-deploy.timer rizzoma-certs.timer; for d in prod qa dev proxy; do (cd /opt/rizzoma/$d && docker compose down); done'
-   ```
-5. **Запустить новый** — выкатит текущие коммиты `main`/`qa`/`dev`:
-   ```bash
-   ssh root@НОВЫЙ_IP 'bash /root/install.sh --start'
-   ```
-6. **DNS**: в Timeweb перевести A-записи `@` и `*` у `rizzoma.ru` на новый IP (TTL 600).
-   Адреса не меняются — в @BotFather и `config.js` ничего править не нужно.
-7. **Проверка**: `https://rizzoma.ru/health`, `qa.`, `dev.`; `/start` в каждом боте.
-   Локально поправить `HostName` у `rizzoma` в `~/.ssh/config`.
-
-Данные ботов живут в памяти и при переезде теряются (как при любом перезапуске).
-Без бэкапа `install.sh` создаст шаблоны `.env`/`config.js` и перечислит, что вписать руками.
+Как выкатывать, где смотреть статус, где живут настройки окружений, откат, сертификаты,
+бэкап и переезд — в **[DEPLOY.md](DEPLOY.md)**.
 
 ---
 

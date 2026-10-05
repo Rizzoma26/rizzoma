@@ -1,5 +1,5 @@
 [Unit]
-Description=RIZZOMA: выкатка готовых образов (main/qa/dev)
+Description=RIZZOMA: выкатка всех окружений по головам веток (ручной запуск; обычно выкатывает GitHub Actions)
 After=docker.service network-online.target
 Requires=docker.service
 

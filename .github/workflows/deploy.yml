@@ -1,0 +1,105 @@
+name: deploy
+
+# main → prod, qa → qa, dev → dev. Только то, что прошло тесты: ждём зелёный «tests»,
+# собираем образы в GHCR и выкатываем на сервер по SSH. Статус каждого окружения —
+# в блоке Deployments на главной странице репозитория.
+on:
+  workflow_run:
+    workflows: [tests]
+    types: [completed]
+    branches: [main, qa, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io/rizzoma26
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+  BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+
+jobs:
+  build:
+    # Только пуши в этот репозиторий: PR из форка тоже порождает workflow_run,
+    # и его код не должен попасть в реестр — сервер выкатывает всё, что там лежит.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        image: [bot, web, proxy]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.${{ matrix.image }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/rizzoma-${{ matrix.image }}:${{ env.SHA }}
+            ${{ env.REGISTRY }}/rizzoma-${{ matrix.image }}:${{ env.BRANCH }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  deploy:
+    needs: build
+    if: contains(fromJSON('["main","qa","dev"]'), github.event.workflow_run.head_branch || github.ref_name)
+    runs-on: ubuntu-latest
+    env:
+      STACK: ${{ fromJSON('{"main":"prod","qa":"qa","dev":"dev"}')[github.event.workflow_run.head_branch || github.ref_name] }}
+      URL: ${{ fromJSON('{"main":"https://rizzoma.ru","qa":"https://qa.rizzoma.ru","dev":"https://dev.rizzoma.ru"}')[github.event.workflow_run.head_branch || github.ref_name] }}
+    environment:
+      name: ${{ fromJSON('{"main":"prod","qa":"qa","dev":"dev"}')[github.event.workflow_run.head_branch || github.ref_name] }}
+      url: ${{ fromJSON('{"main":"https://rizzoma.ru","qa":"https://qa.rizzoma.ru","dev":"https://dev.rizzoma.ru"}')[github.event.workflow_run.head_branch || github.ref_name] }}
+    steps:
+      # Ключ CI на сервере ограничен одной командой: rizzoma-deploy.sh <env> <sha>.
+      - name: SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          echo "${{ vars.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Выкатка ${{ env.STACK }}
+        run: ssh -o ConnectTimeout=20 -o ConnectionAttempts=3 deploy@${{ vars.DEPLOY_HOST }} "$STACK $SHA"
+
+      - name: Проверка ${{ env.URL }}
+        run: |
+          for i in $(seq 1 12); do
+            if out=$(curl -fsS -m 10 "$URL/health"); then echo "$out"; exit 0; fi
+            sleep 5
+          done
+          echo "::error::$URL/health не отвечает"; exit 1
+
+      - name: Итог
+        if: always()
+        run: |
+          short=${SHA:0:7}
+          {
+            echo "### ${{ job.status == 'success' && '✅' || '❌' }} $STACK — $short"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Окружение | **$STACK** |"
+            echo "| Адрес | $URL |"
+            echo "| Ветка | \`$BRANCH\` |"
+            echo "| Коммит | [\`$short\`](${{ github.server_url }}/${{ github.repository }}/commit/$SHA) |"
+          } >> "$GITHUB_STEP_SUMMARY"

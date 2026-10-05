@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Подготовка чистого Ubuntu (24.04) под RIZZOMA: Docker, пользователь deploy,
-# /opt/rizzoma, скрипты и таймеры выкатки/сертификатов, запрет входа по паролю.
+# /opt/rizzoma, скрипт выкатки (его зовёт GitHub Actions по SSH), таймер сертификатов,
+# запрет входа по паролю.
 # Запуск от root, повторный запуск безопасен (ничего уже настроенного не затирает):
 #
 #   bash install.sh                          # чистая установка, секреты — по шаблонам
 #   bash install.sh --restore backup.tgz     # переезд: секреты, конфиги и сертификаты из бэкапа
-#   bash install.sh ... --start              # сразу включить выкатку и продление сертификата
+#   bash install.sh ... --start              # выкатить окружения и включить продление сертификата
 #
-# Без --start таймеры только ставятся: при переезде сначала гасим старый сервер —
+# Без --start ничего не запускается: при переезде сначала гасим старый сервер —
 # два бота на одном токене мешают друг другу (getUpdates → 409).
 set -euo pipefail
 
@@ -70,6 +71,9 @@ for f in rizzoma-deploy.sh rizzoma-certs.sh rizzoma-backup.sh; do
   install -m 755 -o deploy -g deploy "$SRC/deploy/server/$f" "$ROOT/bin/$f"
 done
 install -m 644 "$SRC"/deploy/server/rizzoma-*.service "$SRC"/deploy/server/rizzoma-*.timer /etc/systemd/system/
+# Таймер выкатки был до перехода на выкатку из GitHub Actions — убираем, если остался.
+systemctl disable --now rizzoma-deploy.timer >/dev/null 2>&1 || true
+rm -f /etc/systemd/system/rizzoma-deploy.timer
 systemctl daemon-reload
 
 # Шаблоны там, где бэкапа не было: секреты придётся вписать руками.
@@ -99,6 +103,7 @@ if [ -f "$ROOT/proxy/certs/certificates/$DOMAIN.crt" ]; then
   echo "tls /certs/certificates/$DOMAIN.crt /certs/certificates/$DOMAIN.key" > "$ROOT/proxy/conf/tls.caddy"
 fi
 chown -R deploy:deploy "$ROOT" /home/deploy
+[ -d /home/deploy/.ssh ] && chmod 700 /home/deploy/.ssh && chmod 600 /home/deploy/.ssh/authorized_keys 2>/dev/null || true
 chmod 600 "$ROOT"/*/.env
 
 say "проверка"
@@ -106,12 +111,14 @@ missing=0
 for s in prod qa dev; do grep -q '^BOT_TOKEN=.\+' "$ROOT/$s/.env" || { echo "   нет BOT_TOKEN в $s/.env"; missing=1; }; done
 grep -q '^TIMEWEBCLOUD_AUTH_TOKEN=.\+' "$ROOT/proxy/.env" || { echo "   нет TIMEWEBCLOUD_AUTH_TOKEN в proxy/.env"; missing=1; }
 [ -f /home/deploy/.docker/config.json ] || { echo "   deploy не залогинен в ghcr.io: sudo -u deploy docker login ghcr.io -u <github-логин>  (classic PAT, read:packages)"; missing=1; }
+grep -q 'rizzoma-deploy.sh --ssh' /home/deploy/.ssh/authorized_keys 2>/dev/null || echo "   нет ключа CI в /home/deploy/.ssh/authorized_keys — GitHub Actions не сможет выкатывать (см. DEPLOY.md)"
 
 if [ -n "$START" ]; then
   [ $missing = 0 ] || { echo "не запускаю: заполни то, что выше, и повтори с --start" >&2; exit 1; }
-  systemctl enable --now rizzoma-deploy.timer rizzoma-certs.timer
+  systemctl enable --now rizzoma-certs.timer
   systemctl start rizzoma-deploy.service
-  say "запущено: journalctl -u rizzoma-deploy -f"
+  journalctl -u rizzoma-deploy --since "-5 min" --no-pager -o cat | grep -E "выкатываю|готово|ошибка|уже"
+  say "запущено. Дальше выкатывает GitHub Actions; DNS — на IP этого сервера"
 else
-  say "готово. Включить выкатку: bash install.sh --start  (или systemctl enable --now rizzoma-deploy.timer rizzoma-certs.timer)"
+  say "готово. Запустить: bash install.sh --start"
 fi

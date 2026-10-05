@@ -1,9 +1,0 @@
-[Unit]
-Description=RIZZOMA: проверка новых сборок раз в минуту
-
-[Timer]
-OnBootSec=1min
-OnUnitInactiveSec=1min
-
-[Install]
-WantedBy=timers.target
